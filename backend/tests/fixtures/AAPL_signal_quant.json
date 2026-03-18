@@ -1,0 +1,11 @@
+{
+  "reasoning": null,
+  "composite_score": 0.5318514687704956,
+  "factor_breakdown": {
+    "momentum": 0.4800651513385128,
+    "quality": 0.8661969538741133,
+    "value": 0.2109839577609273,
+    "low_vol": 0.5701598121084288
+  },
+  "data_quality": "full"
+}

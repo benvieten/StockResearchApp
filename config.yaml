@@ -1,0 +1,63 @@
+anthropic:
+  models:
+    technical: "claude-haiku-4-5-20251001"
+    fundamental: "claude-haiku-4-5-20251001"
+    quant: "claude-haiku-4-5-20251001"
+    sector: "claude-sonnet-4-6"
+    sentiment: "claude-sonnet-4-6"
+    synthesis: "claude-sonnet-4-6"
+
+signal_weights:
+  fundamental: 0.30
+  technical: 0.20
+  sentiment: 0.20
+  sector: 0.20
+  quant: 0.10
+
+cache:
+  enabled: true
+  directory: "./cache"
+  ttl_hours: 24
+  # Increment version when data shape changes to bust stale cache entries
+  schema_version: 1
+
+rate_limits:
+  reddit_delay_seconds: 1.0
+  anthropic_retry_max_attempts: 4
+  anthropic_retry_base_delay_seconds: 2
+  anthropic_retry_jitter_seconds: 0.5
+
+data_sources:
+  reddit_subreddits:
+    - wallstreetbets
+    - stocks
+    - investing
+    - SecurityAnalysis
+  reddit_limit: 50
+
+sector_etf_map:
+  Technology: XLK
+  Healthcare: XLV
+  Financials: XLF
+  "Consumer Discretionary": XLY
+  "Consumer Staples": XLP
+  Energy: XLE
+  Industrials: XLI
+  Materials: XLB
+  "Real Estate": XLRE
+  Utilities: XLU
+  "Communication Services": XLC
+
+# Quant factor normalization bounds
+quant:
+  earnings_yield_min: 0.0
+  earnings_yield_max: 0.15
+  volatility_window_days: 90
+  momentum_windows_months: [3, 6, 12]
+
+# Synthesis verdict thresholds (composite score)
+synthesis:
+  strong_buy_threshold: 0.75
+  buy_threshold: 0.60
+  hold_threshold: 0.40
+  sell_threshold: 0.25

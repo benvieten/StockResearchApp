@@ -1,0 +1,13 @@
+{
+  "reasoning": "AAPL's 12-month return of 17.3% trails the XLK sector ETF's 28.9% return by 11.6 percentage points, clearly placing it in the underperforming category (>5pp below the benchmark). Within the peer group, AAPL fares better than MSFT (1.6%) and META (2.1%), but significantly lags high-momentum names like GOOGL (87.9%) and NVDA (51.0%), which are the primary drivers of the sector's strong overall performance. The peer median return of approximately 26.3% further confirms AAPL's relative weakness within the Technology sector over this period.",
+  "sector": "Technology",
+  "relative_performance": "underperforming",
+  "sector_etf": "XLK",
+  "peer_comparison": {
+    "MSFT": 0.01566602748669043,
+    "GOOGL": 0.8793407647274553,
+    "NVDA": 0.5096001524578562,
+    "META": 0.020996453491897
+  },
+  "data_quality": "full"
+}

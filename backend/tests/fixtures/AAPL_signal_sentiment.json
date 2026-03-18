@@ -1,0 +1,21 @@
+{
+  "reasoning": "Reddit sentiment for AAPL is notably mixed-to-bearish: multiple posts highlight AAPL puts generating gains, bearish price targets (e.g., \"AAPL TO 230\"), frustration with the stock dropping, and references to Apple \"admitting defeat\" on AI by outsourcing to Google Gemini. A handful of posts are mildly bullish (e.g., \"Apple 300 after ER,\" iPhone 17 pre-order enthusiasm), but the overall Reddit tone leans bearish. News sentiment is more neutral-to-mildly bullish, covering the AirPods Max 2 launch, Tim Cook dispelling retirement rumors, memory/Big Tech gains on Nvidia AI tailwinds, and Cook's China visit \u2014 though several headlines flag valuation concerns, tariff supply chain pressure, institutional stock reductions, and share price weakness. StockTwits data is unavailable. No bot-flagged Reddit posts were identified, so no discount is applied and adjusted_score equals raw_score. Bot risk is assessed as low given zero flagged posts and organic-looking retail commentary. Key narratives center on Apple's AI strategy concerns (Google Gemini deal), AAPL options trading (puts outperforming), new hardware (AirPods Max 2), tariff/valuation headwinds, and mixed institutional positioning.",
+  "raw_score": -0.12,
+  "adjusted_score": -0.12,
+  "bot_risk": "low",
+  "source_breakdown": {
+    "reddit": -0.28,
+    "news": 0.08,
+    "stocktwits": 0.0
+  },
+  "narrative_themes": [
+    "Apple AI strategy concerns (Google Gemini partnership)",
+    "AAPL puts / bearish options activity",
+    "AirPods Max 2 hardware launch",
+    "Tariff pressure and supply chain valuation headwinds",
+    "Institutional position reductions",
+    "Tim Cook leadership continuity and China relations"
+  ],
+  "mention_volume": 383,
+  "data_quality": "partial"
+}

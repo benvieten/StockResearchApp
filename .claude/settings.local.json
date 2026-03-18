@@ -1,7 +1,32 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "Bash(black:*)",
+      "Bash(ruff:*)",
+      "Bash(python -m backend.*:*)",
+      "Bash(pytest:*)",
+      "Bash(pip install:*)",
+      "Bash(pip install -r requirements.txt:*)",
+      "Bash(C:/Users/Olive/.venvs/stock-research-app/Scripts/python.exe -m pytest backend/tests/phase3/test_technical_indicators.py -v)",
+      "Bash(C:/Users/Olive/.venvs/stock-research-app/Scripts/python.exe -m pytest backend/tests/phase3/test_quant_math.py -v)",
+      "Bash(C:/Users/Olive/.venvs/stock-research-app/Scripts/python.exe -m pytest backend/tests/phase4/test_graph.py::TestResearchStateSchema -v)",
+      "Bash(cmd.exe /c \"npm create vite@latest frontend -- --template react-ts 2>&1\")"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/lint_python.sh",
+            "timeout": 15,
+            "statusMessage": "Linting Python file..."
+          }
+        ]
+      }
     ]
   }
 }

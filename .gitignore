@@ -8,7 +8,25 @@ dist/
 build/
 __pycache__/
 *.pyc
+*.pyo
+
+# Cache — never commit fetched data
+cache/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Python virtual environments
+# Venv lives at C:/Users/Olive/.venvs/stock-research-app (outside OneDrive)
+# Activate: C:/Users/Olive/.venvs/stock-research-app/Scripts/activate
+.venv/
+venv/
+env/
+
+# Pytest
+.pytest_cache/
+.coverage
+
+# Ruff / Black
+.ruff_cache/

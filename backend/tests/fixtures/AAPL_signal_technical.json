@@ -1,0 +1,27 @@
+{
+  "reasoning": "Step 1 - Trend Analysis: EMA 20 (259.21) is below EMA 50 (262.31), and both are below EMA 200 (250.58) initially appears bullish, but closer inspection shows the price is compressed between the 20 and 50 EMAs in a tight range, with the trend still structurally below the 50/200 relationship being inverted from typical bull setups. Actually, the 200-EMA is lowest, suggesting the price has been consolidating rather than trending strongly.\n\nStep 2 - Momentum (RSI): RSI 14 at 36.7 is in oversold territory (below 40), indicating potential bounce risk but also suggesting selling has been aggressive. This is a bearish continuation signal when combined with other indicators.\n\nStep 3 - MACD Analysis: MACD (-3.4976) is negative and trading below its signal line (-2.1356), with a negative histogram (-1.3619). This indicates bearish momentum with the 12-EMA below the 26-EMA, confirming downward momentum.\n\nStep 4 - Bollinger Bands: Price (implied around 261.40 at mid-band) is near the middle of the bands, not at extremes, but this suggests consolidation rather than strength.\n\nStep 5 - Volatility & Volume: ATR of 5.78 shows moderate volatility. OBV requires trend context but with bearish MACD/RSI signals, suggests volume may not be strongly supporting upside moves.\n\nStep 6 - Support/Resistance: Support at 249.00 is ~3.7% below current levels; Resistance at 276.11 is ~5.7% above. The resistance is farther, suggesting upside could be capped more readily than downside is cushioned.\n\nConclusion: Multiple bearish indicators (RSI oversold but within downtrend context, negative MACD, EMA compression) point to a bearish bias. However, oversold RSI prevents ultra-high confidence. Confidence set at 0.72 reflecting the convergence of bearish signals with some near-term bounce potential from oversold levels.",
+  "direction": "bearish",
+  "confidence": 0.72,
+  "key_levels": {
+    "support": 249.0,
+    "resistance": 276.11
+  },
+  "indicator_summary": "AAPL presents a bearish technical setup with the 20-day EMA trading below the 50-day and 200-day EMAs, signaling weakening momentum. RSI at 36.7 indicates oversold conditions with limited downside cushion, while the negative MACD histogram suggests diverging bullish and bearish momentum with selling pressure.",
+  "raw_indicators": {
+    "ema_20": 259.2075965730934,
+    "ema_50": 262.30968757544713,
+    "ema_200": 250.57656353538937,
+    "rsi_14": 36.69489264024256,
+    "macd": -3.4975753008185393,
+    "macd_signal": -2.135644872919967,
+    "macd_hist": -1.3619304278985722,
+    "bb_upper": 275.22193131990423,
+    "bb_lower": 247.5750657504083,
+    "bb_mid": 261.39849853515625,
+    "atr_14": 5.77881556103369,
+    "obv": 2474282532.0,
+    "support": 249.0,
+    "resistance": 276.1099853515625
+  },
+  "data_quality": "full"
+}

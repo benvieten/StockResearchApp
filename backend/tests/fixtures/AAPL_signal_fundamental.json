@@ -1,0 +1,25 @@
+{
+  "reasoning": "Apple exhibits strong operational profitability with impressive net margin (26.9%) and gross margin (46.9%), supported by moderate revenue growth of 6.4% YoY. However, valuation multiples are elevated (P/E of 31.6, P/B of 41.7, P/S of 8.83), particularly for mature tech, suggesting the market is pricing in significant future growth expectations. The elevated debt-to-equity ratio of 1.34 combined with a low FCF yield of 2.69% and concerning ROE of 1.52 (reflecting stretched shareholder returns relative to equity base) indicate capital efficiency challenges despite operational excellence. The company appears overvalued relative to its current fundamentals, though quality execution in margins and profitability provides some support.",
+  "quality_score": 0.72,
+  "valuation_verdict": "overvalued",
+  "key_flags": [
+    "Strong net margin at 26.9%",
+    "Excellent gross margin at 46.9%",
+    "Solid revenue growth of 6.4% YoY",
+    "Operating margin healthy at 32.0%"
+  ],
+  "metrics": {
+    "pe_ratio": 31.598,
+    "pb_ratio": 41.6706,
+    "ps_ratio": 8.8274,
+    "ev_ebitda": 25.9485,
+    "gross_margin": 0.4691,
+    "operating_margin": 0.3197,
+    "net_margin": 0.2692,
+    "revenue_growth_yoy": 0.0643,
+    "debt_to_equity": 1.338,
+    "roe": 0.0152,
+    "fcf_yield": 0.0269
+  },
+  "data_quality": "full"
+}

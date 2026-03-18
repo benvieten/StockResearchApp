@@ -1,0 +1,41 @@
+# Web framework & server
+fastapi
+uvicorn[standard]
+sse-starlette
+
+# LangGraph & LLM
+langgraph
+langchain-anthropic
+anthropic
+
+# Data sources
+yfinance
+feedparser
+beautifulsoup4
+httpx
+
+# Data processing
+pandas
+numpy
+pandas-ta
+
+# Pydantic & config
+pydantic>=2.0
+pydantic-settings
+pyyaml
+python-dotenv
+
+# Retry & resilience
+tenacity
+
+# Logging
+structlog
+
+# Cache
+diskcache
+
+# Dev / testing
+black
+ruff
+pytest
+pytest-asyncio
