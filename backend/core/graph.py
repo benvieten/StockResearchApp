@@ -243,15 +243,25 @@ async def stream_research(ticker: str) -> AsyncIterator[dict]:
     }
 
     try:
+        final_state = None
         async for mode, payload in graph.astream(
             initial_state, stream_mode=["custom", "updates"]
         ):
             if mode == "custom":
                 yield payload
-            # "updates" mode payloads are node-level dicts — we skip them
-            # since we already emit finer-grained events via get_stream_writer()
+            elif mode == "updates" and "synthesis" in payload:
+                # Capture the final report from the synthesis node update
+                final_state = payload["synthesis"]
 
-        yield {"type": "done", "ticker": ticker}
+        # Emit pipeline_complete with the final report for the frontend
+        if final_state and final_state.get("final_report"):
+            yield {
+                "type": "pipeline_complete",
+                "report": final_state["final_report"],
+                "ticker": ticker,
+            }
+        else:
+            yield {"type": "done", "ticker": ticker}
     except Exception as exc:
         log.error("graph_stream_error", ticker=ticker, error=str(exc))
         yield {"type": "error", "error": str(exc), "ticker": ticker}

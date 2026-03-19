@@ -25,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
+from anthropic import AsyncAnthropic
 from backend.core.graph import run_research, stream_research
 
 load_dotenv()
@@ -75,6 +76,17 @@ class ResearchRequest(BaseModel):
                 f"Invalid ticker '{v}'. Must be 1-5 uppercase letters (e.g. AAPL)."
             )
         return v
+
+
+class ExplainSimpleRequest(BaseModel):
+    ticker: str
+    verdict: str
+    conviction: str
+    narrative: str
+    bull_case: list[str]
+    bear_case: list[str]
+    conflicts: list[str]
+    signal_scores: dict[str, float]
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -145,3 +157,84 @@ async def research_stream(req: ResearchRequest) -> StreamingResponse:
             "Connection": "keep-alive",
         },
     )
+
+
+@app.post("/research/explain-simple")
+async def explain_simple(req: ExplainSimpleRequest) -> dict:
+    """
+    Takes a completed FinalReport and returns a plain-English 'explain for dummies'
+    version using Claude Haiku. Funny, simple, zero jargon.
+    """
+    log.info("explain_simple_request", ticker=req.ticker, verdict=req.verdict)
+
+    scores_text = "\n".join(
+        f"  - {k.capitalize()}: {round(v * 100)}%" for k, v in req.signal_scores.items()
+    )
+    bull = "\n".join(f"  - {b}" for b in req.bull_case)
+    bear = "\n".join(f"  - {b}" for b in req.bear_case)
+    conflicts = "\n".join(f"  - {c}" for c in req.conflicts) if req.conflicts else "  - None"
+
+    prompt = f"""You are explaining a stock research report to someone who:
+- Has never invested before
+- Thinks "bull" and "bear" are just animals
+- Gets confused by words like "P/E ratio", "MACD", or "quantitative"
+- Needs everything explained like they are 12 years old
+
+The stock is: {req.ticker}
+The verdict is: {req.verdict.replace("_", " ").upper()}
+Conviction level: {req.conviction}
+
+Here is the expert analysis you need to simplify:
+
+Narrative: {req.narrative}
+
+Reasons it might go UP:
+{bull}
+
+Reasons it might go DOWN:
+{bear}
+
+Where the experts disagreed:
+{conflicts}
+
+Expert scores (higher = better):
+{scores_text}
+
+Your job:
+1. summary: Write 3-4 sentences explaining what this stock is, what the verdict means, and why — using ZERO finance jargon. Use simple analogies (like comparing the stock to a lemonade stand, a popular kid at school, a car, etc). Be a little funny but keep it genuinely useful.
+2. verdict_explained: One sentence explaining what {req.verdict.replace("_", " ")} means in plain English (e.g. "Hold means: keep it if you have it, but don't buy more right now.")
+3. bull_simple: The top reason to be optimistic, in one sentence a kid could understand.
+4. bear_simple: The top reason to be worried, in one sentence a kid could understand.
+5. bottom_line: One punchy sentence that is the absolute simplest take. Make it slightly funny.
+
+Do NOT use these words: P/E, MACD, RSI, EMA, quant, composite, conviction, sentiment, fundamental, technical, valuation, equity, bullish, bearish, metric, indicator, thesis."""
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string"},
+            "verdict_explained": {"type": "string"},
+            "bull_simple": {"type": "string"},
+            "bear_simple": {"type": "string"},
+            "bottom_line": {"type": "string"},
+        },
+        "required": ["summary", "verdict_explained", "bull_simple", "bear_simple", "bottom_line"],
+    }
+
+    try:
+        client = AsyncAnthropic()
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            tools=[{"name": "submit", "description": "Submit the simple explanation", "input_schema": schema}],
+            tool_choice={"type": "tool", "name": "submit"},
+            messages=[{"role": "user", "content": prompt}],
+        )
+        for block in response.content:
+            if block.type == "tool_use":
+                log.info("explain_simple_done", ticker=req.ticker)
+                return dict(block.input)
+        raise ValueError("No tool_use block returned")
+    except Exception as exc:
+        log.error("explain_simple_failed", ticker=req.ticker, error=str(exc))
+        raise HTTPException(status_code=500, detail={"error": str(exc), "ticker": req.ticker, "phase": "explain_simple"})

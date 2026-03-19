@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils'
 import type { AgentName, AgentState, FinalReport } from '@/types'
 import { VerdictCard } from '@/components/VerdictCard'
 import { SignalCard } from '@/components/SignalCard'
+import { DummiesMode } from '@/components/DummiesMode'
 import { ArrowLeft, CheckCircle, XCircle, AlertCircle, Brain } from 'lucide-react'
 
 const AGENT_ORDER: AgentName[] = ['fundamental', 'technical', 'quant', 'sector', 'sentiment', 'synthesis']
@@ -45,6 +46,9 @@ export function ReportDashboard({ ticker, report, agents, onReset }: ReportDashb
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {/* Verdict */}
         <VerdictCard report={report} />
+
+        {/* Dummies mode */}
+        <DummiesMode report={report} />
 
         {/* Signal scores bar */}
         <SignalScoreBar report={report} />
