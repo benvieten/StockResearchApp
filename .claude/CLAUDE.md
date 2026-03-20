@@ -288,3 +288,96 @@ Map composite score to verdict:
 - Do not build the frontend until the FastAPI backend is fully validated
 - Do not skip `make test-phaseN` before moving to the next phase
 - Do not recreate config files that already exist (`config.yaml`, `pytest.ini`, `Makefile`, etc.)
+
+---
+
+## Current Status (as of 2026-03-20)
+
+The full pipeline is built and working end-to-end. All six phases are complete. The app runs locally with `uvicorn backend.main:app --reload --port 8000` and `npm run dev` in `frontend/`.
+
+### What Has Been Built (Beyond the Original Phases)
+
+#### Market Regime Detection (`backend/core/regime.py`)
+- Phase 1 threshold-based classifier using SPY + VIX via yfinance
+- Three signals: VIX level, EMA-200 slope, price vs EMA-200
+- Output: `RegimeSignal` with `regime` ("bull"/"bear"/"transitional"), `confidence`, VIX, ADX
+- Disk-cached daily (`SPY_regime_YYYY-MM-DD_v1.json`) — fast on repeat calls
+- Emitted as first SSE event (`{"type": "regime", ...}`) before agents start
+- Phase 2 HMM design documented in `docs/HMM_IMPLEMENTATION.md` — not yet implemented
+- **IMPORTANT**: uvicorn must be started with `--reload` or restarted after code changes, otherwise the running process uses the old in-memory module
+
+#### Regime-Aware Agent Weights (`config.yaml`, `backend/core/config.py`)
+- `regime_signal_weights` in `config.yaml`: bull/bear/transitional presets
+- Bull: technical 0.30, fundamental 0.25; Bear: fundamental 0.40, technical 0.15
+- Applied in synthesis agent before profile adjustments
+
+#### Trader Profile (`backend/core/data_models.py`, frontend)
+- `TraderProfile` Pydantic model: `risk_tolerance`, `time_horizon`, `goal`, `experience`
+- Frontend shows a 4-question form between ticker entry and analysis
+- Profile sent in SSE request body; forwarded through graph to synthesis agent
+- Weight multipliers applied per dimension, then renormalized
+- Profile context injected into synthesis LLM prompt
+
+#### Anti-Hype / Anti-Overfitting Features
+- **Hype spike discount** in `sentiment.py`: mention volume tiers (100/175/240) compress bullish scores
+- **Full consensus cap** in `synthesis.py`: if all agents agree direction, conviction capped at "medium"
+- **Statistical anomaly metrics** in `quant.py`: `return_zscore`, `volume_ratio`, `bb_percentile`, `rsi_percentile` added to `factor_breakdown`
+
+#### Beginner-Friendly UI
+- **ExplainTab** (`frontend/src/components/ExplainTab.tsx`): static tab ("How to Read This") explaining all agents, verdicts, scores, regime, statistical metrics, and synthesis in plain English
+- **DummiesMode** (`frontend/src/components/DummiesMode.tsx`): AI-generated "Explain Like I'm Dumb" toggle, calls `/api/research/explain-simple`
+- **RegimeBadge**: bull=emerald, bear=red, transitional=amber in the report top bar
+- **TraderProfileChip**: 4 purple pills showing selected profile in report header
+- **Statistical Signals section** in QuantDetails: color-coded with hint text per metric
+
+#### Display Fixes in `frontend/src/components/SignalCard.tsx`
+- `KEY_LABELS` expanded with `_pct`-suffix keys, `fcf_yield`, `pe_ratio`, `pb_ratio`, `ps_ratio`
+- `FRACTION_PCT_KEYS` set: known fraction keys (gross_margin, roe, etc.) auto-multiply by 100 and display with `%`
+- `_pct`-suffix keys display with `%` directly
+- `formatValue()` helper centralises all value formatting
+- StockTwits filtered from sentiment `source_breakdown` display
+- Synthesis card summary shows verdict + conviction instead of missing `composite_score`
+
+### Pending Tasks
+1. **Commit all changes** — run `git add` and `git commit` before switching devices
+2. **Test after backend restart** — with `--reload`, verify regime badge appears in top bar for a fresh run
+3. **LLM signal caching** — cache per-agent LLM outputs to `{ticker}_{agent}_signal_YYYY-MM-DD_v1.json`; eliminates repeat API costs for same-day re-runs
+4. **Local model integration** — route Haiku agents to Ollama (Qwen2.5-14B on RTX 3060 or 32B on M4 Pro), keep Sonnet for synthesis
+
+### Hardware Available for Local Models
+- **Mac M4 Pro** (dev machine): unified memory, can run Qwen2.5-32B (24GB config) or Qwen2.5-72B (48GB config) via Ollama/MLX
+- **Windows PC with RTX 3060 12GB**: can run Qwen2.5-14B comfortably; serve via Ollama over LAN
+- Planned split: GPU machine handles Haiku-equivalent agents (fundamental, technical, quant), M4 Pro handles synthesis-equivalent
+
+### Running Locally
+```bash
+# Backend (from project root)
+source .venv/bin/activate
+uvicorn backend.main:app --reload --port 8000
+
+# Frontend (separate terminal)
+cd frontend && npm run dev
+
+# Open http://localhost:5173
+```
+
+### Key Files Modified Since Initial Build
+| File | What Changed |
+|------|-------------|
+| `backend/core/regime.py` | New file — market regime classifier with disk cache |
+| `backend/core/graph.py` | Added regime pre-fetch, trader_profile state, stream_research emits regime event first |
+| `backend/core/data_models.py` | Added `TraderProfile` model |
+| `backend/core/config.py` | Added `regime_signal_weights` config field |
+| `backend/agents/synthesis.py` | Regime weights, profile adjustments, consensus cap, hype guidance in prompt |
+| `backend/agents/sentiment.py` | Hype volume discount, bot risk prompt guidance |
+| `backend/agents/technical.py` | Regime context injected into LLM prompt |
+| `backend/agents/quant.py` | 4 statistical anomaly metrics added to factor_breakdown |
+| `backend/main.py` | `ResearchRequest` accepts `trader_profile`; `/research/explain-simple` endpoint |
+| `config.yaml` | `regime_signal_weights` added |
+| `frontend/src/App.tsx` | Profile view added between hero and researching; regime state captured |
+| `frontend/src/types.ts` | `TraderProfile`, `RegimeInfo`, regime SSE event type added |
+| `frontend/src/components/ReportDashboard.tsx` | RegimeBadge, TraderProfileChip, tab switcher (Analysis / How to Read This) |
+| `frontend/src/components/SignalCard.tsx` | Percentage formatting, expanded KEY_LABELS, synthesis summary fix |
+| `frontend/src/components/ExplainTab.tsx` | New file — static beginner-friendly guide |
+| `frontend/src/components/TraderProfileForm.tsx` | New file — 4-question profile form |
+| `docs/HMM_IMPLEMENTATION.md` | New file — Phase 2 HMM design spec |
