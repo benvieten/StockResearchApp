@@ -1,31 +1,41 @@
 import { useState, useCallback } from 'react'
 import { HeroSection } from '@/components/blocks/HeroSection'
+import { TraderProfileForm } from '@/components/TraderProfileForm'
 import { AgentProgressTracker } from '@/components/AgentProgressTracker'
 import { ReportDashboard } from '@/components/ReportDashboard'
-import type { AgentName, AgentState, FinalReport, SSEEvent } from '@/types'
+import type { AgentName, AgentState, FinalReport, RegimeInfo, SSEEvent, TraderProfile } from '@/types'
 
-type AppView = 'hero' | 'researching' | 'report'
+type AppView = 'hero' | 'profile' | 'researching' | 'report'
 
 function App() {
   const [view, setView] = useState<AppView>('hero')
   const [ticker, setTicker] = useState('')
+  const [traderProfile, setTraderProfile] = useState<TraderProfile | null>(null)
+  const [regime, setRegime] = useState<RegimeInfo | null>(null)
   const [agents, setAgents] = useState<Partial<Record<AgentName, AgentState>>>({})
   const [report, setReport] = useState<FinalReport | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handleAnalyze = useCallback(async (inputTicker: string) => {
-    const t = inputTicker.toUpperCase().trim()
-    setTicker(t)
+  // Step 1: hero collects ticker, then we show the profile form
+  const handleTickerSubmit = useCallback((inputTicker: string) => {
+    setTicker(inputTicker.toUpperCase().trim())
     setAgents({})
     setReport(null)
     setError(null)
+    setView('profile')
+  }, [])
+
+  // Step 2: profile form submits, we kick off the analysis
+  const handleAnalyze = useCallback(async (profile: TraderProfile) => {
+    setTraderProfile(profile)
     setView('researching')
 
+    const t = ticker
     try {
       const res = await fetch('/api/research/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker: t }),
+        body: JSON.stringify({ ticker: t, trader_profile: profile }),
       })
 
       if (!res.ok) {
@@ -76,6 +86,10 @@ function App() {
               }))
               break
 
+            case 'regime':
+              setRegime(event.regime)
+              break
+
             case 'pipeline_complete':
               setReport(event.report)
               setView('report')
@@ -94,11 +108,13 @@ function App() {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
       setError(msg)
     }
-  }, [])
+  }, [ticker])
 
   const handleReset = useCallback(() => {
     setView('hero')
     setTicker('')
+    setTraderProfile(null)
+    setRegime(null)
     setAgents({})
     setReport(null)
     setError(null)
@@ -107,7 +123,15 @@ function App() {
   return (
     <div className="min-h-screen bg-[#080808] text-white">
       {view === 'hero' && (
-        <HeroSection onAnalyze={handleAnalyze} />
+        <HeroSection onAnalyze={handleTickerSubmit} />
+      )}
+
+      {view === 'profile' && (
+        <TraderProfileForm
+          ticker={ticker}
+          onSubmit={handleAnalyze}
+          onBack={() => setView('hero')}
+        />
       )}
 
       {view === 'researching' && (
@@ -123,6 +147,8 @@ function App() {
           ticker={ticker}
           report={report}
           agents={agents}
+          regime={regime}
+          traderProfile={traderProfile}
           onReset={handleReset}
         />
       )}

@@ -19,8 +19,8 @@ from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
-from backend.core.config import get_config
 from backend.core.data_models import FundamentalSignal
+from backend.core.model_router import get_model_router
 from backend.data.price import get_financials
 
 log = structlog.get_logger()
@@ -206,8 +206,7 @@ def _fmt_ratios(ratios: dict) -> str:
 
 
 async def run(ticker: str) -> FundamentalSignal:
-    cfg = get_config()
-    model = cfg.anthropic.models["fundamental"]
+    model = get_model_router().get_model("fundamental")
 
     log.info("fundamental_agent_start", ticker=ticker, model=model)
     financials = await get_financials(ticker)

@@ -62,6 +62,7 @@ class SynthesisConfig(BaseModel):
 class AppConfig(BaseModel):
     anthropic: AnthropicConfig = AnthropicConfig()
     signal_weights: dict[str, float] = {}
+    regime_signal_weights: dict[str, dict[str, float]] = {}
     cache: CacheConfig = CacheConfig()
     rate_limits: RateLimitsConfig = RateLimitsConfig()
     data_sources: DataSourcesConfig = DataSourcesConfig()

@@ -131,6 +131,9 @@ function getSignalSummary(name: AgentName, signal: Record<string, unknown>): str
       return `Score ${adj != null ? (adj > 0 ? '+' : '') + adj.toFixed(2) : '—'} · ${vol ?? 0} mentions · bot risk: ${risk ?? '—'}`
     }
     case 'synthesis': {
+      const v = signal.verdict as string | undefined
+      const conv = signal.conviction as string | undefined
+      if (v) return `${v.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} · ${conv ?? '—'} conviction`
       const c = signal.composite_score as number | undefined
       return `Composite ${c != null ? (c * 100).toFixed(0) + '%' : '—'}`
     }
@@ -189,9 +192,119 @@ function TechnicalDetails({ signal }: { signal: Record<string, unknown> }) {
   )
 }
 
+const QUANT_FACTOR_KEYS = ['momentum', 'quality', 'value', 'low_vol']
+const QUANT_STAT_KEYS   = ['return_zscore', 'volume_ratio', 'bb_percentile', 'rsi_percentile']
+
+const QUANT_STAT_HINTS: Record<string, string> = {
+  return_zscore:  '>2 extended · <-2 oversold',
+  volume_ratio:   '>2 high vol · <0.5 weak vol',
+  bb_percentile:  '0=lower band · 1=upper band',
+  rsi_percentile: '0=yearly low · 1=yearly high',
+}
+
+// Human-readable labels for known snake_case keys
+const KEY_LABELS: Record<string, string> = {
+  // Technical indicators
+  ema_20: 'EMA 20', ema_50: 'EMA 50', ema_200: 'EMA 200',
+  rsi_14: 'RSI 14',
+  macd: 'MACD', macd_signal: 'MACD Signal', macd_hist: 'MACD Histogram',
+  bb_upper: 'BB Upper', bb_lower: 'BB Lower', bb_mid: 'BB Mid',
+  atr_14: 'ATR 14', obv: 'OBV',
+  support: 'Support', resistance: 'Resistance',
+  // Fundamental metrics (fraction form)
+  ev_ebitda: 'EV/EBITDA',
+  gross_margin: 'Gross Margin', operating_margin: 'Op. Margin', net_margin: 'Net Margin',
+  revenue_growth_qoq: 'Revenue Growth (QoQ)', revenue_growth_yoy: 'Revenue Growth (YoY)',
+  debt_to_equity: 'Debt / Equity',
+  roe: 'ROE', roa: 'ROA',
+  pe: 'P/E Ratio', pe_ratio: 'P/E Ratio',
+  pb: 'P/B Ratio', pb_ratio: 'P/B Ratio',
+  ps: 'P/S Ratio', ps_ratio: 'P/S Ratio',
+  fcf_yield: 'FCF Yield',
+  // Fundamental metrics (_pct form — LLM sometimes returns these already multiplied)
+  gross_margin_pct: 'Gross Margin', operating_margin_pct: 'Op. Margin', net_margin_pct: 'Net Margin',
+  revenue_growth_qoq_pct: 'Revenue Growth (QoQ)', revenue_growth_yoy_pct: 'Revenue Growth (YoY)',
+  roe_pct: 'ROE', roa_pct: 'ROA', fcf_yield_pct: 'FCF Yield',
+  // Quant factors
+  momentum: 'Momentum', quality: 'Quality', value: 'Value', low_vol: 'Low Volatility',
+  // Quant statistical
+  return_zscore: 'Return Z-Score', volume_ratio: 'Volume Ratio',
+  bb_percentile: 'BB Percentile', rsi_percentile: 'RSI Percentile',
+  composite_score: 'Composite Score',
+  // Sentiment sources
+  reddit: 'Reddit', news: 'News',
+}
+
+// Keys whose values are fractions (0–1) representing a percentage — multiply by 100 to display
+const FRACTION_PCT_KEYS = new Set([
+  'gross_margin', 'operating_margin', 'net_margin',
+  'revenue_growth_qoq', 'revenue_growth_yoy',
+  'roe', 'roa', 'fcf_yield',
+])
+
+function formatKey(k: string): string {
+  return KEY_LABELS[k] ?? k.replace(/_pct$/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function formatValue(k: string, v: unknown, prefix = ''): string {
+  if (typeof v !== 'number') return String(v)
+  if (k.endsWith('_pct')) return `${v.toFixed(1)}%`
+  if (FRACTION_PCT_KEYS.has(k)) return `${(v * 100).toFixed(1)}%`
+  const raw = v.toFixed(4).replace(/\.?0+$/, '')
+  return prefix + raw
+}
+
 function QuantDetails({ signal }: { signal: Record<string, unknown> }) {
   const breakdown = signal.factor_breakdown as Record<string, number | null> | undefined
-  return <div className="space-y-4">{breakdown && <KVTable data={breakdown} label="Factor Breakdown" />}</div>
+  if (!breakdown) return null
+
+  const factors = Object.fromEntries(
+    QUANT_FACTOR_KEYS.filter(k => breakdown[k] != null).map(k => [k, breakdown[k]])
+  )
+  const stats = Object.fromEntries(
+    QUANT_STAT_KEYS.filter(k => breakdown[k] != null).map(k => [k, breakdown[k]])
+  )
+
+  return (
+    <div className="space-y-4">
+      {Object.keys(factors).length > 0 && <KVTable data={factors} label="Factor Scores" />}
+      {Object.keys(stats).length > 0 && (
+        <div>
+          <p className="text-xs uppercase tracking-wider text-zinc-600 font-medium mb-2">Statistical Signals</p>
+          <div className="rounded-lg border border-white/5 overflow-hidden">
+            {QUANT_STAT_KEYS.filter(k => stats[k] != null).map((k, i) => {
+              const v = stats[k] as number
+              const hint = QUANT_STAT_HINTS[k] ?? ''
+              // Color-code based on key semantics
+              let valueColor = 'text-zinc-200'
+              if (k === 'return_zscore') {
+                valueColor = v > 2 ? 'text-red-400' : v < -2 ? 'text-emerald-400' : 'text-zinc-200'
+              } else if (k === 'bb_percentile' || k === 'rsi_percentile') {
+                valueColor = v > 0.8 ? 'text-red-400' : v < 0.2 ? 'text-emerald-400' : 'text-zinc-200'
+              } else if (k === 'volume_ratio') {
+                valueColor = v > 2 ? 'text-purple-400' : v < 0.5 ? 'text-zinc-500' : 'text-zinc-200'
+              }
+              return (
+                <div
+                  key={k}
+                  className={cn(
+                    'px-3 py-2 text-xs',
+                    i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-transparent',
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-500">{formatKey(k)}</span>
+                    <span className={cn('font-mono font-medium', valueColor)}>{v.toFixed(4).replace(/\.?0+$/, '')}</span>
+                  </div>
+                  <p className="text-zinc-700 mt-0.5">{hint}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function SectorDetails({ signal }: { signal: Record<string, unknown> }) {
@@ -210,7 +323,11 @@ function SectorDetails({ signal }: { signal: Record<string, unknown> }) {
 
 function SentimentDetails({ signal }: { signal: Record<string, unknown> }) {
   const themes = signal.narrative_themes as string[] | undefined
-  const sources = signal.source_breakdown as Record<string, number> | undefined
+  const rawSources = signal.source_breakdown as Record<string, number> | undefined
+  // Filter out StockTwits — no longer a data source
+  const sources = rawSources
+    ? Object.fromEntries(Object.entries(rawSources).filter(([k]) => k !== 'stocktwits'))
+    : undefined
   const botRisk = signal.bot_risk as string | undefined
 
   const botColor = botRisk === 'low' ? 'text-emerald-400' : botRisk === 'medium' ? 'text-amber-400' : 'text-red-400'
@@ -263,10 +380,8 @@ function KVTable({ data, label, prefix = '' }: { data: Record<string, unknown>; 
               i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-transparent',
             )}
           >
-            <span className="text-zinc-500 capitalize">{k.replace(/_/g, ' ')}</span>
-            <span className="font-mono text-zinc-200">
-              {prefix}{typeof v === 'number' ? v.toFixed(4).replace(/\.?0+$/, '') : String(v)}
-            </span>
+            <span className="text-zinc-500">{formatKey(k)}</span>
+            <span className="font-mono text-zinc-200">{formatValue(k, v, prefix)}</span>
           </div>
         ))}
       </div>

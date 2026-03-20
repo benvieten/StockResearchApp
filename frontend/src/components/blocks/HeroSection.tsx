@@ -124,6 +124,8 @@ export function HeroSection({ onAnalyze }: HeroSectionProps) {
             <div className="relative flex items-center bg-[#0f0f0f] rounded-2xl border border-white/10">
               <Search className="absolute left-4 w-5 h-5 text-zinc-500" />
               <input
+                id="ticker"
+                name="ticker"
                 type="text"
                 value={ticker}
                 onChange={e => {

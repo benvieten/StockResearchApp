@@ -28,7 +28,8 @@ from langgraph.graph import END, StateGraph
 
 from backend.agents import fundamental, quant, sector, sentiment, technical
 from backend.agents import synthesis as synthesis_agent
-from backend.core.data_models import FinalReport
+from backend.core.data_models import FinalReport, TraderProfile
+from backend.core.regime import RegimeSignal, get_regime
 
 log = structlog.get_logger()
 
@@ -42,6 +43,8 @@ class ResearchState(TypedDict):
     # nodes silently overwrite each other (LangGraph superstep behaviour).
     agent_signals: Annotated[list, operator.add]
     final_report: dict | None
+    regime: RegimeSignal | None          # pre-fetched once, shared by technical + synthesis
+    trader_profile: TraderProfile | None  # passed in from the request, forwarded to synthesis
 
 
 # ── Node functions ─────────────────────────────────────────────────────────────
@@ -66,7 +69,7 @@ async def run_technical(state: ResearchState) -> dict:
     writer = get_stream_writer()
     writer({"type": "agent_start", "agent": "technical"})
     try:
-        signal = await technical.run(ticker)
+        signal = await technical.run(ticker, regime=state.get("regime"))
         writer({"type": "agent_complete", "agent": "technical", "signal": signal.model_dump()})
         return {"agent_signals": [{"agent": "technical", "signal": signal}]}
     except Exception as exc:
@@ -143,7 +146,9 @@ async def run_synthesis(state: ResearchState) -> dict:
 
     try:
         report = await synthesis_agent.run(
-            ticker, fund_sig, tech_sig, quant_sig, sect_sig, sent_sig
+            ticker, fund_sig, tech_sig, quant_sig, sect_sig, sent_sig,
+            regime=state.get("regime"),
+            trader_profile=state.get("trader_profile"),
         )
         writer({"type": "agent_complete", "agent": "synthesis", "signal": report.model_dump()})
         return {"final_report": report.model_dump()}
@@ -198,7 +203,7 @@ def _get_graph() -> Any:
 # ── Public entry points ────────────────────────────────────────────────────────
 
 
-async def run_research(ticker: str) -> FinalReport:
+async def run_research(ticker: str, trader_profile: TraderProfile | None = None) -> FinalReport:
     """
     Run the full multi-agent research pipeline for a ticker.
 
@@ -208,10 +213,15 @@ async def run_research(ticker: str) -> FinalReport:
     log.info("graph_start", ticker=ticker)
     graph = _get_graph()
 
+    regime = await get_regime()
+    log.info("graph_regime_fetched", ticker=ticker, regime=regime.regime, confidence=regime.confidence)
+
     initial_state: ResearchState = {
         "ticker": ticker,
         "agent_signals": [],
         "final_report": None,
+        "regime": regime,
+        "trader_profile": trader_profile,
     }
 
     final_state = await graph.ainvoke(initial_state)
@@ -225,7 +235,7 @@ async def run_research(ticker: str) -> FinalReport:
     return report
 
 
-async def stream_research(ticker: str) -> AsyncIterator[dict]:
+async def stream_research(ticker: str, trader_profile: TraderProfile | None = None) -> AsyncIterator[dict]:
     """
     Run the pipeline and yield custom stream events as they are emitted.
 
@@ -236,11 +246,19 @@ async def stream_research(ticker: str) -> AsyncIterator[dict]:
     log.info("graph_stream_start", ticker=ticker)
     graph = _get_graph()
 
+    regime = await get_regime()
+    log.info("graph_regime_fetched", ticker=ticker, regime=regime.regime, confidence=regime.confidence)
+
     initial_state: ResearchState = {
         "ticker": ticker,
         "agent_signals": [],
         "final_report": None,
+        "regime": regime,
+        "trader_profile": trader_profile,
     }
+
+    # Emit regime immediately so the frontend can display it before agents start
+    yield {"type": "regime", "regime": regime.model_dump()}
 
     try:
         final_state = None

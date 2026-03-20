@@ -1,3 +1,19 @@
+// ── Trader profile ──────────────────────────────────────────────────────────
+
+export type RiskTolerance = 'conservative' | 'moderate' | 'aggressive'
+export type TimeHorizon = 'short_term' | 'medium_term' | 'long_term'
+export type TraderGoal = 'growth' | 'income' | 'preservation' | 'speculation'
+export type Experience = 'beginner' | 'intermediate' | 'experienced'
+
+export interface TraderProfile {
+  risk_tolerance: RiskTolerance
+  time_horizon: TimeHorizon
+  goal: TraderGoal
+  experience: Experience
+}
+
+// ── Agent signals ───────────────────────────────────────────────────────────
+
 export type DataQuality = 'full' | 'partial'
 export type Verdict = 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell'
 export type Conviction = 'high' | 'medium' | 'low'
@@ -86,8 +102,20 @@ export interface FinalReport {
   generated_at: string
 }
 
+export interface RegimeInfo {
+  regime: 'bull' | 'bear' | 'transitional'
+  confidence: number
+  vix: number | null
+  adx: number | null
+  ema200_slope: number | null
+  spy_vs_ema200: number | null
+  model_source: string
+  as_of: string
+}
+
 export type SSEEvent =
   | { type: 'pipeline_start'; ticker: string }
+  | { type: 'regime'; regime: RegimeInfo }
   | { type: 'agent_start'; agent: AgentName }
   | { type: 'agent_complete'; agent: AgentName; signal: AgentSignal }
   | { type: 'pipeline_complete'; report: FinalReport }

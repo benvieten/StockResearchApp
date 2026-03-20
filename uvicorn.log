@@ -1,2 +1,262 @@
-2026-03-18 19:44:36 [info     ] startup
-INFO:     127.0.0.1:55077 - "GET /health HTTP/1.1" 200 OK
+2026-03-19 18:12:02 [info     ] startup
+INFO:     127.0.0.1:52930 - "GET /health HTTP/1.1" 200 OK
+2026-03-19 20:09:01 [info     ] stream_request                 ticker=PL
+INFO:     127.0.0.1:56016 - "POST /research/stream HTTP/1.1" 200 OK
+2026-03-19 20:09:01 [info     ] graph_stream_start             ticker=PL
+2026-03-19 20:09:01 [info     ] fundamental_agent_start        model=claude-haiku-4-5-20251001 ticker=PL
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/PL_financials_2026-03-19_v1.json source=financials ticker=PL
+2026-03-19 20:09:01 [info     ] quant_agent_start              ticker=PL
+2026-03-19 20:09:01 [info     ] sector_agent_start             model=claude-sonnet-4-6 ticker=PL
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/PL_company_info_2026-03-19_v1.json source=company_info ticker=PL
+2026-03-19 20:09:01 [info     ] sentiment_agent_start          model=claude-sonnet-4-6 ticker=PL
+2026-03-19 20:09:01 [info     ] technical_agent_start          model=claude-haiku-4-5-20251001 ticker=PL
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/PL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=PL
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/PL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=PL
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/SPY_ohlcv_2026-03-19_v1.json source=ohlcv ticker=SPY
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/PL_financials_2026-03-19_v1.json source=financials ticker=PL
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/PL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=PL
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/XLI_ohlcv_2026-03-19_v1.json source=ohlcv ticker=XLI
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/HON_ohlcv_2026-03-19_v1.json source=ohlcv ticker=HON
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/UPS_ohlcv_2026-03-19_v1.json source=ohlcv ticker=UPS
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/CAT_ohlcv_2026-03-19_v1.json source=ohlcv ticker=CAT
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/DE_ohlcv_2026-03-19_v1.json source=ohlcv ticker=DE
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/PL_reddit_2026-03-19_v1.json source=reddit ticker=PL
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/PL_news_2026-03-19_v1.json source=news ticker=PL
+2026-03-19 20:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/PL_stocktwits_2026-03-19_v1.json source=stocktwits ticker=PL
+2026-03-19 20:09:01 [info     ] quant_agent_done               composite=0.4978423300509585 ticker=PL
+2026-03-19 20:09:07 [info     ] sector_agent_done              relative_performance=outperforming sector=Industrials ticker=PL
+2026-03-19 20:09:09 [info     ] technical_agent_done           direction=bullish ticker=PL
+2026-03-19 20:09:11 [info     ] fundamental_agent_done         ticker=PL verdict=overvalued
+2026-03-19 20:09:11 [info     ] sentiment_agent_done           bot_risk=low ticker=PL
+2026-03-19 20:09:11 [info     ] synthesis_agent_start          model=claude-sonnet-4-6 ticker=PL
+2026-03-19 20:09:37 [info     ] synthesis_agent_done           conviction=medium ticker=PL verdict=buy
+2026-03-19 20:13:41 [info     ] explain_simple_request         ticker=PL verdict=buy
+2026-03-19 20:13:51 [info     ] explain_simple_done            ticker=PL
+INFO:     127.0.0.1:56523 - "POST /research/explain-simple HTTP/1.1" 200 OK
+2026-03-19 20:59:04 [info     ] stream_request                 ticker=AAPL
+INFO:     127.0.0.1:58397 - "POST /research/stream HTTP/1.1" 200 OK
+2026-03-19 20:59:04 [info     ] graph_stream_start             ticker=AAPL
+2026-03-19 20:59:04 [info     ] fundamental_agent_start        model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 20:59:04 [info     ] quant_agent_start              ticker=AAPL
+2026-03-19 20:59:04 [info     ] sector_agent_start             model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_company_info_2026-03-19_v1.json source=company_info ticker=AAPL
+2026-03-19 20:59:04 [info     ] sentiment_agent_start          model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 20:59:04 [info     ] technical_agent_start          model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/SPY_ohlcv_2026-03-19_v1.json source=ohlcv ticker=SPY
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/XLK_ohlcv_2026-03-19_v1.json source=ohlcv ticker=XLK
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/MSFT_ohlcv_2026-03-19_v1.json source=ohlcv ticker=MSFT
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/GOOGL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=GOOGL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/NVDA_ohlcv_2026-03-19_v1.json source=ohlcv ticker=NVDA
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/META_ohlcv_2026-03-19_v1.json source=ohlcv ticker=META
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_reddit_2026-03-19_v1.json source=reddit ticker=AAPL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_news_2026-03-19_v1.json source=news ticker=AAPL
+2026-03-19 20:59:04 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_stocktwits_2026-03-19_v1.json source=stocktwits ticker=AAPL
+2026-03-19 20:59:04 [info     ] quant_agent_done               composite=0.527604864795918 ticker=AAPL
+2026-03-19 20:59:08 [info     ] fundamental_agent_done         ticker=AAPL verdict=overvalued
+2026-03-19 20:59:10 [info     ] sector_agent_done              relative_performance=underperforming sector=Technology ticker=AAPL
+2026-03-19 20:59:10 [info     ] technical_agent_done           direction=bearish ticker=AAPL
+2026-03-19 20:59:15 [info     ] sentiment_agent_done           bot_risk=low ticker=AAPL
+2026-03-19 21:00:11 [info     ] stream_request                 ticker=AAPL
+INFO:     127.0.0.1:58410 - "POST /research/stream HTTP/1.1" 200 OK
+2026-03-19 21:00:11 [info     ] graph_stream_start             ticker=AAPL
+2026-03-19 21:00:11 [info     ] fundamental_agent_start        model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:00:11 [info     ] quant_agent_start              ticker=AAPL
+2026-03-19 21:00:11 [info     ] sector_agent_start             model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_company_info_2026-03-19_v1.json source=company_info ticker=AAPL
+2026-03-19 21:00:11 [info     ] sentiment_agent_start          model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:00:11 [info     ] technical_agent_start          model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/SPY_ohlcv_2026-03-19_v1.json source=ohlcv ticker=SPY
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/XLK_ohlcv_2026-03-19_v1.json source=ohlcv ticker=XLK
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/MSFT_ohlcv_2026-03-19_v1.json source=ohlcv ticker=MSFT
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/GOOGL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=GOOGL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/NVDA_ohlcv_2026-03-19_v1.json source=ohlcv ticker=NVDA
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/META_ohlcv_2026-03-19_v1.json source=ohlcv ticker=META
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_reddit_2026-03-19_v1.json source=reddit ticker=AAPL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_news_2026-03-19_v1.json source=news ticker=AAPL
+2026-03-19 21:00:11 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_stocktwits_2026-03-19_v1.json source=stocktwits ticker=AAPL
+2026-03-19 21:00:11 [info     ] quant_agent_done               composite=0.527604864795918 ticker=AAPL
+2026-03-19 21:00:14 [info     ] fundamental_agent_done         ticker=AAPL verdict=fair
+2026-03-19 21:00:16 [info     ] sector_agent_done              relative_performance=underperforming sector=Technology ticker=AAPL
+2026-03-19 21:00:17 [info     ] technical_agent_done           direction=bearish ticker=AAPL
+2026-03-19 21:00:22 [info     ] sentiment_agent_done           bot_risk=low ticker=AAPL
+2026-03-19 21:04:48 [info     ] stream_request                 ticker=AAPL
+INFO:     127.0.0.1:58564 - "POST /research/stream HTTP/1.1" 200 OK
+2026-03-19 21:04:48 [info     ] graph_stream_start             ticker=AAPL
+2026-03-19 21:04:48 [info     ] fundamental_agent_start        model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:04:48 [info     ] quant_agent_start              ticker=AAPL
+2026-03-19 21:04:48 [info     ] sector_agent_start             model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_company_info_2026-03-19_v1.json source=company_info ticker=AAPL
+2026-03-19 21:04:48 [info     ] sentiment_agent_start          model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:04:48 [info     ] technical_agent_start          model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/SPY_ohlcv_2026-03-19_v1.json source=ohlcv ticker=SPY
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/XLK_ohlcv_2026-03-19_v1.json source=ohlcv ticker=XLK
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/MSFT_ohlcv_2026-03-19_v1.json source=ohlcv ticker=MSFT
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/GOOGL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=GOOGL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/NVDA_ohlcv_2026-03-19_v1.json source=ohlcv ticker=NVDA
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/META_ohlcv_2026-03-19_v1.json source=ohlcv ticker=META
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_reddit_2026-03-19_v1.json source=reddit ticker=AAPL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_news_2026-03-19_v1.json source=news ticker=AAPL
+2026-03-19 21:04:48 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_stocktwits_2026-03-19_v1.json source=stocktwits ticker=AAPL
+2026-03-19 21:04:48 [info     ] quant_agent_done               composite=0.527604864795918 ticker=AAPL
+2026-03-19 21:04:52 [info     ] fundamental_agent_done         ticker=AAPL verdict=overvalued
+2026-03-19 21:04:53 [info     ] sector_agent_done              relative_performance=underperforming sector=Technology ticker=AAPL
+2026-03-19 21:04:55 [info     ] technical_agent_done           direction=bearish ticker=AAPL
+2026-03-19 21:05:01 [info     ] sentiment_agent_done           bot_risk=low ticker=AAPL
+2026-03-19 21:09:01 [info     ] stream_request                 ticker=AAPL
+INFO:     127.0.0.1:58641 - "POST /research/stream HTTP/1.1" 200 OK
+2026-03-19 21:09:01 [info     ] graph_stream_start             ticker=AAPL
+2026-03-19 21:09:01 [info     ] fundamental_agent_start        model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:09:01 [info     ] quant_agent_start              ticker=AAPL
+2026-03-19 21:09:01 [info     ] sector_agent_start             model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_company_info_2026-03-19_v1.json source=company_info ticker=AAPL
+2026-03-19 21:09:01 [info     ] sentiment_agent_start          model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:09:01 [info     ] technical_agent_start          model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/SPY_ohlcv_2026-03-19_v1.json source=ohlcv ticker=SPY
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/XLK_ohlcv_2026-03-19_v1.json source=ohlcv ticker=XLK
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/MSFT_ohlcv_2026-03-19_v1.json source=ohlcv ticker=MSFT
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/GOOGL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=GOOGL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/NVDA_ohlcv_2026-03-19_v1.json source=ohlcv ticker=NVDA
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/META_ohlcv_2026-03-19_v1.json source=ohlcv ticker=META
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_reddit_2026-03-19_v1.json source=reddit ticker=AAPL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_news_2026-03-19_v1.json source=news ticker=AAPL
+2026-03-19 21:09:01 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_stocktwits_2026-03-19_v1.json source=stocktwits ticker=AAPL
+2026-03-19 21:09:01 [info     ] quant_agent_done               composite=0.527604864795918 ticker=AAPL
+2026-03-19 21:09:05 [info     ] fundamental_agent_done         ticker=AAPL verdict=overvalued
+2026-03-19 21:09:06 [info     ] sector_agent_done              relative_performance=underperforming sector=Technology ticker=AAPL
+2026-03-19 21:09:07 [info     ] technical_agent_done           direction=bearish ticker=AAPL
+2026-03-19 21:09:12 [info     ] sentiment_agent_done           bot_risk=low ticker=AAPL
+INFO:     127.0.0.1:58654 - "GET /health HTTP/1.1" 200 OK
+2026-03-19 21:10:23 [info     ] stream_request                 ticker=AAPL
+INFO:     127.0.0.1:58658 - "POST /research/stream HTTP/1.1" 200 OK
+2026-03-19 21:10:23 [info     ] graph_stream_start             ticker=AAPL
+2026-03-19 21:10:23 [info     ] fundamental_agent_start        model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:10:23 [info     ] quant_agent_start              ticker=AAPL
+2026-03-19 21:10:23 [info     ] sector_agent_start             model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_company_info_2026-03-19_v1.json source=company_info ticker=AAPL
+2026-03-19 21:10:23 [info     ] sentiment_agent_start          model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:10:23 [info     ] technical_agent_start          model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/SPY_ohlcv_2026-03-19_v1.json source=ohlcv ticker=SPY
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/XLK_ohlcv_2026-03-19_v1.json source=ohlcv ticker=XLK
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/MSFT_ohlcv_2026-03-19_v1.json source=ohlcv ticker=MSFT
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/GOOGL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=GOOGL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/NVDA_ohlcv_2026-03-19_v1.json source=ohlcv ticker=NVDA
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/META_ohlcv_2026-03-19_v1.json source=ohlcv ticker=META
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_reddit_2026-03-19_v1.json source=reddit ticker=AAPL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_news_2026-03-19_v1.json source=news ticker=AAPL
+2026-03-19 21:10:23 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_stocktwits_2026-03-19_v1.json source=stocktwits ticker=AAPL
+2026-03-19 21:10:23 [info     ] quant_agent_done               composite=0.527604864795918 ticker=AAPL
+2026-03-19 21:10:27 [info     ] fundamental_agent_done         ticker=AAPL verdict=overvalued
+2026-03-19 21:10:29 [info     ] sector_agent_done              relative_performance=underperforming sector=Technology ticker=AAPL
+2026-03-19 21:10:30 [info     ] technical_agent_done           direction=bearish ticker=AAPL
+2026-03-19 21:10:34 [info     ] sentiment_agent_done           bot_risk=low ticker=AAPL
+2026-03-19 21:11:17 [info     ] stream_request                 ticker=AAPL
+INFO:     127.0.0.1:58667 - "POST /research/stream HTTP/1.1" 200 OK
+2026-03-19 21:11:17 [info     ] graph_stream_start             ticker=AAPL
+2026-03-19 21:11:17 [info     ] fundamental_agent_start        model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:11:17 [info     ] quant_agent_start              ticker=AAPL
+2026-03-19 21:11:17 [info     ] sector_agent_start             model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_company_info_2026-03-19_v1.json source=company_info ticker=AAPL
+2026-03-19 21:11:17 [info     ] sentiment_agent_start          model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:11:17 [info     ] technical_agent_start          model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/SPY_ohlcv_2026-03-19_v1.json source=ohlcv ticker=SPY
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/XLK_ohlcv_2026-03-19_v1.json source=ohlcv ticker=XLK
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/MSFT_ohlcv_2026-03-19_v1.json source=ohlcv ticker=MSFT
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/GOOGL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=GOOGL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/NVDA_ohlcv_2026-03-19_v1.json source=ohlcv ticker=NVDA
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/META_ohlcv_2026-03-19_v1.json source=ohlcv ticker=META
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_reddit_2026-03-19_v1.json source=reddit ticker=AAPL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_news_2026-03-19_v1.json source=news ticker=AAPL
+2026-03-19 21:11:17 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_stocktwits_2026-03-19_v1.json source=stocktwits ticker=AAPL
+2026-03-19 21:11:17 [info     ] quant_agent_done               composite=0.527604864795918 ticker=AAPL
+2026-03-19 21:11:21 [info     ] fundamental_agent_done         ticker=AAPL verdict=overvalued
+2026-03-19 21:11:23 [info     ] sector_agent_done              relative_performance=underperforming sector=Technology ticker=AAPL
+2026-03-19 21:11:24 [info     ] technical_agent_done           direction=bearish ticker=AAPL
+2026-03-19 21:11:28 [info     ] sentiment_agent_done           bot_risk=low ticker=AAPL
+2026-03-19 21:11:28 [info     ] synthesis_agent_start          model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:11:49 [info     ] synthesis_agent_done           conviction=low ticker=AAPL verdict=hold
+2026-03-19 21:11:55 [info     ] stream_request                 ticker=AAPL
+INFO:     127.0.0.1:58678 - "POST /research/stream HTTP/1.1" 200 OK
+2026-03-19 21:11:55 [info     ] graph_stream_start             ticker=AAPL
+2026-03-19 21:11:55 [info     ] fundamental_agent_start        model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:11:55 [info     ] quant_agent_start              ticker=AAPL
+2026-03-19 21:11:55 [info     ] sector_agent_start             model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_company_info_2026-03-19_v1.json source=company_info ticker=AAPL
+2026-03-19 21:11:55 [info     ] sentiment_agent_start          model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:11:55 [info     ] technical_agent_start          model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/SPY_ohlcv_2026-03-19_v1.json source=ohlcv ticker=SPY
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/XLK_ohlcv_2026-03-19_v1.json source=ohlcv ticker=XLK
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/MSFT_ohlcv_2026-03-19_v1.json source=ohlcv ticker=MSFT
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/GOOGL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=GOOGL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/NVDA_ohlcv_2026-03-19_v1.json source=ohlcv ticker=NVDA
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/META_ohlcv_2026-03-19_v1.json source=ohlcv ticker=META
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_reddit_2026-03-19_v1.json source=reddit ticker=AAPL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_news_2026-03-19_v1.json source=news ticker=AAPL
+2026-03-19 21:11:55 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_stocktwits_2026-03-19_v1.json source=stocktwits ticker=AAPL
+2026-03-19 21:11:55 [info     ] quant_agent_done               composite=0.527604864795918 ticker=AAPL
+2026-03-19 21:11:59 [info     ] fundamental_agent_done         ticker=AAPL verdict=overvalued
+2026-03-19 21:12:01 [info     ] sector_agent_done              relative_performance=underperforming sector=Technology ticker=AAPL
+2026-03-19 21:12:05 [info     ] technical_agent_done           direction=bearish ticker=AAPL
+2026-03-19 21:12:13 [info     ] stream_request                 ticker=AAPL
+INFO:     127.0.0.1:58687 - "POST /research/stream HTTP/1.1" 200 OK
+2026-03-19 21:12:13 [info     ] graph_stream_start             ticker=AAPL
+2026-03-19 21:12:13 [info     ] fundamental_agent_start        model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:12:13 [info     ] quant_agent_start              ticker=AAPL
+2026-03-19 21:12:13 [info     ] sector_agent_start             model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_company_info_2026-03-19_v1.json source=company_info ticker=AAPL
+2026-03-19 21:12:13 [info     ] sentiment_agent_start          model=claude-sonnet-4-6 ticker=AAPL
+2026-03-19 21:12:13 [info     ] technical_agent_start          model=claude-haiku-4-5-20251001 ticker=AAPL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/SPY_ohlcv_2026-03-19_v1.json source=ohlcv ticker=SPY
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_financials_2026-03-19_v1.json source=financials ticker=AAPL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=AAPL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/XLK_ohlcv_2026-03-19_v1.json source=ohlcv ticker=XLK
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/MSFT_ohlcv_2026-03-19_v1.json source=ohlcv ticker=MSFT
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/GOOGL_ohlcv_2026-03-19_v1.json source=ohlcv ticker=GOOGL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/NVDA_ohlcv_2026-03-19_v1.json source=ohlcv ticker=NVDA
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/META_ohlcv_2026-03-19_v1.json source=ohlcv ticker=META
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_reddit_2026-03-19_v1.json source=reddit ticker=AAPL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_news_2026-03-19_v1.json source=news ticker=AAPL
+2026-03-19 21:12:13 [debug    ] cache_hit                      path=/Users/benvieten/Desktop/StockResearch/StockResearchApp/cache/AAPL_stocktwits_2026-03-19_v1.json source=stocktwits ticker=AAPL
+2026-03-19 21:12:13 [info     ] quant_agent_done               composite=0.527604864795918 ticker=AAPL
+2026-03-19 21:12:14 [info     ] sentiment_agent_done           bot_risk=low ticker=AAPL
+2026-03-19 21:12:17 [info     ] fundamental_agent_done         ticker=AAPL verdict=overvalued
+2026-03-19 21:12:18 [info     ] sector_agent_done              relative_performance=underperforming sector=Technology ticker=AAPL
+2026-03-19 21:12:21 [info     ] technical_agent_done           direction=bearish ticker=AAPL
+2026-03-19 21:12:25 [info     ] sentiment_agent_done           bot_risk=low ticker=AAPL

@@ -6,13 +6,39 @@ anthropic:
     sector: "claude-sonnet-4-6"
     sentiment: "claude-sonnet-4-6"
     synthesis: "claude-sonnet-4-6"
+    explain_simple: "claude-haiku-4-5-20251001"
 
+# Default weights (used as fallback if regime detection fails)
 signal_weights:
   fundamental: 0.30
   technical: 0.20
   sentiment: 0.20
   sector: 0.20
   quant: 0.10
+
+# Regime-conditioned weight presets — synthesis agent selects based on market regime.
+# In bull regimes, momentum/technical signals are more reliable.
+# In bear regimes, fundamental quality and quant factors dominate.
+# In transitional regimes, weights revert toward the default balanced allocation.
+regime_signal_weights:
+  bull:
+    fundamental: 0.25
+    technical: 0.30
+    sentiment: 0.15
+    sector: 0.20
+    quant: 0.10
+  bear:
+    fundamental: 0.40
+    technical: 0.15
+    sentiment: 0.10
+    sector: 0.15
+    quant: 0.20
+  transitional:
+    fundamental: 0.30
+    technical: 0.20
+    sentiment: 0.20
+    sector: 0.20
+    quant: 0.10
 
 cache:
   enabled: true

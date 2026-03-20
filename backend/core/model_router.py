@@ -1,23 +1,18 @@
 """
 ModelRouter — resolves agent names to Anthropic model IDs from config.yaml.
 
-Never hardcode a model name. Always call model_router.get_model(agent_name).
+Never hardcode a model name. Always call get_model_router().get_model(agent_name).
 Model assignments live exclusively in config.yaml under anthropic.models.
 """
 
 from __future__ import annotations
 
-from dotenv import load_dotenv
-from anthropic import Anthropic
-
-from backend.core.config import AppConfig
+from backend.core.config import AppConfig, get_config
 
 
 class ModelRouter:
     def __init__(self, config: AppConfig) -> None:
-        load_dotenv()
         self.config = config
-        self.client = Anthropic()
 
     def get_model(self, agent_name: str) -> str:
         """Return the configured model ID for the given agent name.
@@ -32,3 +27,14 @@ class ModelRouter:
                 f"Available agents: {list(models.keys())}"
             )
         return models[agent_name]
+
+
+_router: ModelRouter | None = None
+
+
+def get_model_router() -> ModelRouter:
+    """Return the singleton ModelRouter, initialised from config on first call."""
+    global _router
+    if _router is None:
+        _router = ModelRouter(get_config())
+    return _router

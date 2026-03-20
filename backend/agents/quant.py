@@ -15,6 +15,7 @@ import math
 import sys
 
 import pandas as pd
+import pandas_ta as ta
 import structlog
 
 from backend.core.config import get_config
@@ -79,18 +80,18 @@ def compute_quality_score(
     return sum(sub_scores) / len(sub_scores)
 
 
-def compute_value_score(pe: float | None) -> float | None:
+def compute_value_score(
+    pe: float | None,
+    ey_min: float,
+    ey_max: float,
+) -> float | None:
     """
-    Score value via earnings yield (1/PE), normalized to [0%, 15%] range.
+    Score value via earnings yield (1/PE), normalized to [ey_min, ey_max] range.
 
     Negative PE (loss-making company) → None.
     Very high PE → score near 0.0.
     Very low PE → score near 1.0.
     """
-    cfg = get_config()
-    ey_min = cfg.quant.earnings_yield_min   # 0.0
-    ey_max = cfg.quant.earnings_yield_max   # 0.15
-
     if pe is None or pe <= 0:
         return None
 
@@ -99,16 +100,13 @@ def compute_value_score(pe: float | None) -> float | None:
     return max(0.0, min(1.0, score))
 
 
-def compute_low_vol_score(df: pd.DataFrame) -> float:
+def compute_low_vol_score(df: pd.DataFrame, window: int) -> float:
     """
     Score low-volatility factor.
 
-    Annualizes 90-day realized vol, then maps:
+    Annualizes realized vol over `window` trading days, then maps:
     0% annualized vol → 1.0, 50%+ annualized vol → 0.0.
     """
-    cfg = get_config()
-    window = cfg.quant.volatility_window_days
-
     returns = df["Close"].pct_change().dropna()
     sample = returns.iloc[-window:] if len(returns) >= window else returns
     daily_vol = float(sample.std())
@@ -135,6 +133,97 @@ def compute_composite_score(
     return sum(factors) / len(factors)
 
 
+# ── Statistical anomaly + mean-reversion metrics ───────────────────────────────
+
+
+def compute_return_zscore(df: pd.DataFrame, window: int = 90) -> float | None:
+    """
+    Z-score of today's 1-day return vs the trailing 90-day return distribution.
+
+    Interpretation:
+    >  2.0  — unusually large up move (potential exhaustion / mean-reversion risk)
+    < -2.0  — unusually large down move (potential oversold bounce)
+    near 0  — today's move is statistically normal
+    """
+    returns = df["Close"].pct_change().dropna()
+    if len(returns) < window + 1:
+        return None
+    sample = returns.iloc[-window:]
+    today = float(returns.iloc[-1])
+    mean = float(sample.mean())
+    std = float(sample.std())
+    if std == 0:
+        return None
+    return round((today - mean) / std, 4)
+
+
+def compute_volume_ratio(df: pd.DataFrame, window: int = 20) -> float | None:
+    """
+    Today's volume divided by the trailing 20-day average volume.
+
+    > 2.0 — high volume (confirms price move)
+    < 0.5 — low volume (weak conviction behind the move)
+    ~1.0  — normal activity
+    """
+    if "Volume" not in df.columns:
+        return None
+    vol = df["Volume"].dropna()
+    if len(vol) < window + 1:
+        return None
+    avg = float(vol.iloc[-(window + 1):-1].mean())
+    today = float(vol.iloc[-1])
+    if avg == 0:
+        return None
+    return round(today / avg, 4)
+
+
+def compute_bb_percentile(df: pd.DataFrame, window: int = 20) -> float | None:
+    """
+    Bollinger %B — where price sits within its 20-day Bollinger Band.
+
+    0.0 = price at lower band (statistically cheap / oversold)
+    0.5 = price at midline (mean)
+    1.0 = price at upper band (statistically extended / overbought)
+
+    Values outside [0, 1] are clamped — they indicate a breakout.
+    """
+    if len(df) < window:
+        return None
+    close = df["Close"]
+    ma = close.rolling(window).mean()
+    std = close.rolling(window).std()
+    upper = ma + 2 * std
+    lower = ma - 2 * std
+    band_width = float(upper.iloc[-1]) - float(lower.iloc[-1])
+    if band_width == 0:
+        return None
+    pct_b = (float(close.iloc[-1]) - float(lower.iloc[-1])) / band_width
+    return round(max(0.0, min(1.0, pct_b)), 4)
+
+
+def compute_rsi_percentile(df: pd.DataFrame, rsi_window: int = 14, lookback: int = 252) -> float | None:
+    """
+    RSI percentile rank — where today's RSI(14) sits within its own 252-day history.
+
+    0.0 = RSI is at its yearly low (historically oversold)
+    1.0 = RSI is at its yearly high (historically overbought)
+
+    More stable than raw RSI because it accounts for the stock's own momentum
+    character — a growth stock naturally runs hotter than a utility.
+    """
+    if len(df) < rsi_window + lookback:
+        return None
+    rsi_series = ta.rsi(df["Close"], length=rsi_window)
+    if rsi_series is None:
+        return None
+    rsi_clean = rsi_series.dropna().iloc[-lookback:]
+    if len(rsi_clean) < 10:
+        return None
+    today_rsi = float(rsi_clean.iloc[-1])
+    pct = float((rsi_clean < today_rsi).sum()) / len(rsi_clean)
+    return round(pct, 4)
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 
@@ -151,10 +240,8 @@ def _ohlcv_to_df(ohlcv: dict) -> pd.DataFrame:
     ).dropna()
 
 
-def _compute_period_returns(df: pd.DataFrame) -> dict[str, float]:
-    """Compute 3M / 6M / 12M returns from a Close price series."""
-    cfg = get_config()
-    windows = cfg.quant.momentum_windows_months  # [3, 6, 12]
+def _compute_period_returns(df: pd.DataFrame, windows: list[int]) -> dict[str, float]:
+    """Compute period returns from a Close price series for each month window."""
     last_price = float(df["Close"].iloc[-1])
     returns = {}
     trading_days_per_month = 21
@@ -190,14 +277,22 @@ async def run(ticker: str) -> QuantSignal:
     ratios = compute_ratios(financials)
     data_quality = ratios.get("data_quality", "full")
 
-    ticker_returns = _compute_period_returns(df)
-    spy_returns = _compute_period_returns(spy_df)
+    cfg = get_config()
+    ticker_returns = _compute_period_returns(df, cfg.quant.momentum_windows_months)
+    spy_returns = _compute_period_returns(spy_df, cfg.quant.momentum_windows_months)
 
     momentum = compute_momentum_score(ticker_returns, spy_returns) if ticker_returns else None
     quality = compute_quality_score(ratios.get("roe"), ratios.get("debt_to_equity"))
-    value = compute_value_score(ratios.get("pe"))
-    low_vol = compute_low_vol_score(df)
+    value = compute_value_score(ratios.get("pe"), cfg.quant.earnings_yield_min, cfg.quant.earnings_yield_max)
+    low_vol = compute_low_vol_score(df, cfg.quant.volatility_window_days)
     composite = compute_composite_score(momentum, quality, value, low_vol)
+
+    # Statistical anomaly + mean-reversion metrics — not part of composite score,
+    # but passed through factor_breakdown so synthesis and technical agents have context.
+    return_zscore = compute_return_zscore(df)
+    volume_ratio = compute_volume_ratio(df)
+    bb_percentile = compute_bb_percentile(df)
+    rsi_percentile = compute_rsi_percentile(df)
 
     signal = QuantSignal(
         composite_score=composite,
@@ -206,10 +301,15 @@ async def run(ticker: str) -> QuantSignal:
             "quality": quality,
             "value": value,
             "low_vol": low_vol,
+            "return_zscore": return_zscore,
+            "volume_ratio": volume_ratio,
+            "bb_percentile": bb_percentile,
+            "rsi_percentile": rsi_percentile,
         },
         data_quality=data_quality,
     )
-    log.info("quant_agent_done", ticker=ticker, composite=composite)
+    log.info("quant_agent_done", ticker=ticker, composite=composite,
+             return_zscore=return_zscore, volume_ratio=volume_ratio)
     return signal
 
 

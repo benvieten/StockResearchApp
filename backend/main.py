@@ -19,19 +19,30 @@ import re
 from contextlib import asynccontextmanager
 
 import structlog
+from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
+from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
-from anthropic import AsyncAnthropic
+from backend.core.data_models import TraderProfile
 from backend.core.graph import run_research, stream_research
+from backend.core.model_router import get_model_router
 
 load_dotenv()
 log = structlog.get_logger()
 
 _TICKER_RE = re.compile(r"^[A-Z]{1,5}$")
+_client: AsyncAnthropic | None = None
+
+
+def _get_client() -> AsyncAnthropic:
+    global _client
+    if _client is None:
+        _client = AsyncAnthropic()
+    return _client
 
 
 # ── Lifespan ───────────────────────────────────────────────────────────────────
@@ -66,6 +77,7 @@ app.add_middleware(
 
 class ResearchRequest(BaseModel):
     ticker: str
+    trader_profile: TraderProfile | None = None
 
     @field_validator("ticker")
     @classmethod
@@ -105,7 +117,7 @@ async def research(req: ResearchRequest) -> dict:
     """
     log.info("research_request", ticker=req.ticker)
     try:
-        report = await run_research(req.ticker)
+        report = await run_research(req.ticker, trader_profile=req.trader_profile)
         return report.model_dump()
     except Exception as exc:
         log.error("research_failed", ticker=req.ticker, error=str(exc))
@@ -140,7 +152,7 @@ async def research_stream(req: ResearchRequest) -> StreamingResponse:
 
     async def event_generator():
         try:
-            async for event in stream_research(ticker):
+            async for event in stream_research(ticker, trader_profile=req.trader_profile):
                 data = json.dumps(event, default=str)
                 yield f"data: {data}\n\n"
         except Exception as exc:
@@ -157,6 +169,39 @@ async def research_stream(req: ResearchRequest) -> StreamingResponse:
             "Connection": "keep-alive",
         },
     )
+
+
+_EXPLAIN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "verdict_explained": {"type": "string"},
+        "bull_simple": {"type": "string"},
+        "bear_simple": {"type": "string"},
+        "bottom_line": {"type": "string"},
+    },
+    "required": ["summary", "verdict_explained", "bull_simple", "bear_simple", "bottom_line"],
+}
+
+
+@retry(
+    stop=stop_after_attempt(4),
+    wait=wait_exponential(multiplier=2, min=2, max=16) + wait_random(-0.5, 0.5),
+    reraise=True,
+)
+async def _call_explain_llm(model: str, prompt: str) -> dict:
+    client = _get_client()
+    response = await client.messages.create(
+        model=model,
+        max_tokens=1024,
+        tools=[{"name": "submit", "description": "Submit the simple explanation", "input_schema": _EXPLAIN_SCHEMA}],
+        tool_choice={"type": "tool", "name": "submit"},
+        messages=[{"role": "user", "content": prompt}],
+    )
+    for block in response.content:
+        if block.type == "tool_use":
+            return dict(block.input)
+    raise ValueError("No tool_use block returned from explain-simple LLM")
 
 
 @app.post("/research/explain-simple")
@@ -209,32 +254,11 @@ Your job:
 
 Do NOT use these words: P/E, MACD, RSI, EMA, quant, composite, conviction, sentiment, fundamental, technical, valuation, equity, bullish, bearish, metric, indicator, thesis."""
 
-    schema = {
-        "type": "object",
-        "properties": {
-            "summary": {"type": "string"},
-            "verdict_explained": {"type": "string"},
-            "bull_simple": {"type": "string"},
-            "bear_simple": {"type": "string"},
-            "bottom_line": {"type": "string"},
-        },
-        "required": ["summary", "verdict_explained", "bull_simple", "bear_simple", "bottom_line"],
-    }
-
     try:
-        client = AsyncAnthropic()
-        response = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=1024,
-            tools=[{"name": "submit", "description": "Submit the simple explanation", "input_schema": schema}],
-            tool_choice={"type": "tool", "name": "submit"},
-            messages=[{"role": "user", "content": prompt}],
-        )
-        for block in response.content:
-            if block.type == "tool_use":
-                log.info("explain_simple_done", ticker=req.ticker)
-                return dict(block.input)
-        raise ValueError("No tool_use block returned")
+        model = get_model_router().get_model("explain_simple")
+        result = await _call_explain_llm(model, prompt)
+        log.info("explain_simple_done", ticker=req.ticker)
+        return result
     except Exception as exc:
         log.error("explain_simple_failed", ticker=req.ticker, error=str(exc))
         raise HTTPException(status_code=500, detail={"error": str(exc), "ticker": req.ticker, "phase": "explain_simple"})

@@ -19,8 +19,8 @@ from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
-from backend.core.config import get_config
 from backend.core.data_models import SentimentSignal
+from backend.core.model_router import get_model_router
 from backend.data.news import get_news
 from backend.data.reddit import get_reddit_posts
 from backend.data.stocktwits import get_stocktwits_messages
@@ -36,6 +36,51 @@ _SUSPICIOUS_UPVOTE_RATIO = 0.55
 _SUSPICIOUS_MIN_SCORE = 100
 _SPAM_WINDOW_SECONDS = 6 * 3600   # 6-hour window for burst detection
 _SPAM_POST_THRESHOLD = 3
+
+# Hype spike thresholds.
+# Our data collection is bounded: ~200 Reddit posts (50/sub × 4 subs) +
+# ~50 StockTwits + ~30 news = ~280 max. These tiers are calibrated to that
+# ceiling. A mention_volume near the ceiling means all sources are saturated —
+# the stock is being discussed everywhere, which is historically a top signal.
+_HYPE_VOLUME_MEDIUM = 100   # elevated but not unusual for large-caps
+_HYPE_VOLUME_HIGH   = 175   # most sources returning near-max results
+_HYPE_VOLUME_EXTREME = 240  # essentially full saturation across all sources
+
+
+def compute_hype_factor(mention_volume: int, adjusted_score: float) -> float:
+    """
+    Return a compression factor [0.0, 0.45] to apply to a bullish adjusted_score
+    when mention volume is abnormally high.
+
+    Rationale (from r/ai_trading thread): crowd euphoria at high mention volume
+    is a contrary indicator — the information is already priced in and retail
+    sentiment peaks near market tops. We only discount bullish extremes;
+    fear spikes (negative scores) are not discounted because panic is a
+    more reliable signal than euphoria.
+
+    The factor is zero when:
+    - adjusted_score <= 0.25 (neutral or bearish — no discount applies)
+    - mention_volume < _HYPE_VOLUME_MEDIUM (normal activity)
+
+    Returns a factor f such that new_score = adjusted_score * (1 - f).
+    """
+    if adjusted_score <= 0.25:
+        return 0.0
+
+    if mention_volume >= _HYPE_VOLUME_EXTREME:
+        base = 0.45
+    elif mention_volume >= _HYPE_VOLUME_HIGH:
+        base = 0.30
+    elif mention_volume >= _HYPE_VOLUME_MEDIUM:
+        base = 0.15
+    else:
+        return 0.0
+
+    # Scale the discount by how bullish the score is — a score of 0.9 gets
+    # a larger discount than a score of 0.3, because crowd overreaction is
+    # more dangerous at extremes.
+    bullish_intensity = (adjusted_score - 0.25) / 0.75  # 0.0 → 1.0
+    return round(base * bullish_intensity, 4)
 
 
 def _get_client() -> AsyncAnthropic:
@@ -141,6 +186,16 @@ async def _call_llm(
         for m in stocktwits_msgs[:20]
     ) if stocktwits_msgs else "StockTwits: no data available (API restricted)"
 
+    # Classify mention volume so the LLM understands the hype context
+    if mention_volume >= _HYPE_VOLUME_EXTREME:
+        volume_label = f"{mention_volume} — EXTREME (near data-collection ceiling; full market saturation)"
+    elif mention_volume >= _HYPE_VOLUME_HIGH:
+        volume_label = f"{mention_volume} — HIGH (most sources returning near-maximum results)"
+    elif mention_volume >= _HYPE_VOLUME_MEDIUM:
+        volume_label = f"{mention_volume} — ELEVATED (above typical for this data window)"
+    else:
+        volume_label = f"{mention_volume} — NORMAL"
+
     prompt = f"""You are a market sentiment analyst. Analyse sentiment for {ticker}.
 
 === REDDIT POSTS (clean, {len(clean_posts)} total) ===
@@ -155,18 +210,29 @@ async def _call_llm(
 === STOCKTWITS MESSAGES ===
 {st_text}
 
-Total mention volume: {mention_volume}
+Total mention volume: {volume_label}
+
+=== HYPE RISK GUIDANCE ===
+High mention volume combined with uniformly bullish sentiment is a CONTRARY indicator,
+not a confirming one. Retail crowd sentiment peaks near market tops — the information
+is likely already priced in. Apply the following discipline:
+- If volume is HIGH or EXTREME and sentiment skews strongly bullish (>0.5), set
+  adjusted_score lower than raw_score to reflect crowd-overreaction risk.
+- Uniformly bullish content with little dissent is MORE suspicious than mixed content.
+- Fear/negative sentiment spikes are generally more informative than euphoria spikes
+  and should NOT be discounted in the same way.
 
 Your task:
 1. raw_score: unweighted aggregate sentiment [-1.0 bearish to 1.0 bullish]
-2. adjusted_score: same but discount flagged/bot content proportionally to bot_risk
+2. adjusted_score: discount for (a) bot/flagged content AND (b) crowd-overreaction
+   when volume is elevated and sentiment is uniformly bullish
 3. bot_risk: "low" / "medium" / "high" — your assessment of manipulation risk
 4. source_breakdown: score per source (reddit, news, stocktwits) as dict
 5. narrative_themes: 3-6 key themes dominating discussion
 6. mention_volume: total mentions across all sources
-7. reasoning: 2-4 sentence analysis
+7. reasoning: 2-4 sentence analysis — if you applied a hype discount, explain it
 
-If adjusted_score < raw_score (you discounted bots), explain why in reasoning."""
+If adjusted_score < raw_score, explain both the bot discount and/or hype discount in reasoning."""
 
     schema = SentimentSignal.model_json_schema()
     schema.pop("$defs", None)
@@ -184,7 +250,11 @@ If adjusted_score < raw_score (you discounted bots), explain why in reasoning.""
         if block.type == "tool_use":
             data = dict(block.input)
             data["mention_volume"] = mention_volume
-            has_partial = len(stocktwits_msgs) == 0
+            has_partial = (
+                len(stocktwits_msgs) == 0
+                or len(news_headlines) == 0
+                or (len(clean_posts) == 0 and len(flagged_posts) == 0)
+            )
             data.setdefault("data_quality", "partial" if has_partial else "full")
             return SentimentSignal.model_validate(data)
 
@@ -195,8 +265,7 @@ If adjusted_score < raw_score (you discounted bots), explain why in reasoning.""
 
 
 async def run(ticker: str) -> SentimentSignal:
-    cfg = get_config()
-    model = cfg.anthropic.models["sentiment"]
+    model = get_model_router().get_model("sentiment")
 
     log.info("sentiment_agent_start", ticker=ticker, model=model)
 
@@ -217,7 +286,24 @@ async def run(ticker: str) -> SentimentSignal:
     signal = await _call_llm(
         model, ticker, clean, bots, news_headlines, st_msgs, mention_volume
     )
-    log.info("sentiment_agent_done", ticker=ticker, bot_risk=signal.bot_risk)
+
+    # Mathematical guardrail: apply hype discount on top of whatever the LLM returned.
+    # This ensures the discount is applied even if the LLM under-weighted it.
+    hype_factor = compute_hype_factor(mention_volume, signal.adjusted_score)
+    if hype_factor > 0:
+        discounted = round(signal.adjusted_score * (1.0 - hype_factor), 4)
+        log.info(
+            "sentiment_hype_discount_applied",
+            ticker=ticker,
+            mention_volume=mention_volume,
+            original_adjusted=signal.adjusted_score,
+            hype_factor=hype_factor,
+            discounted_score=discounted,
+        )
+        signal = signal.model_copy(update={"adjusted_score": max(-1.0, min(1.0, discounted))})
+
+    log.info("sentiment_agent_done", ticker=ticker, bot_risk=signal.bot_risk,
+             adjusted_score=signal.adjusted_score)
     return signal
 
 

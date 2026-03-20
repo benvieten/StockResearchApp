@@ -72,6 +72,21 @@ class SentimentSignal(BaseModel):
     data_quality: DataQuality
 
 
+# ── Trader profile ─────────────────────────────────────────────────────────────
+
+
+class TraderProfile(BaseModel):
+    """
+    Describes the trader making the request. Passed through the pipeline to
+    the synthesis agent, which uses it to adjust signal weights and frame the
+    final narrative appropriately for this trader's goals and risk appetite.
+    """
+    risk_tolerance: Literal["conservative", "moderate", "aggressive"]
+    time_horizon: Literal["short_term", "medium_term", "long_term"]
+    goal: Literal["growth", "income", "preservation", "speculation"]
+    experience: Literal["beginner", "intermediate", "experienced"]
+
+
 # ── Final output ───────────────────────────────────────────────────────────────
 
 

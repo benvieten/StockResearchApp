@@ -21,6 +21,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.config import get_config
 from backend.core.data_models import SectorSignal
+from backend.core.model_router import get_model_router
 from backend.data.price import get_company_info, get_ohlcv
 
 log = structlog.get_logger()
@@ -150,7 +151,7 @@ Your task:
 
 async def run(ticker: str) -> SectorSignal:
     cfg = get_config()
-    model = cfg.anthropic.models["sector"]
+    model = get_model_router().get_model("sector")
 
     log.info("sector_agent_start", ticker=ticker, model=model)
 
