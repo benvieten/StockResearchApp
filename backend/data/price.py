@@ -141,8 +141,10 @@ def _fetch_financials(ticker: str) -> dict:
     if cf is not None and not cf.empty:
         cf = cf.sort_index(axis=1, ascending=False)
         free_cash_flow = _row_values(cf, "Free Cash Flow")
+        operating_cash_flow = _row_values(cf, "Operating Cash Flow")
     else:
         free_cash_flow = None
+        operating_cash_flow = None
 
     return {
         "revenue": revenue,
@@ -152,7 +154,11 @@ def _fetch_financials(ticker: str) -> dict:
         "ebitda": ebitda,
         "total_debt": total_debt,
         "total_equity": total_equity,
+        "total_assets": total_assets,
+        "current_assets": current_assets,
+        "current_liabilities": current_liabilities,
         "free_cash_flow": free_cash_flow,
+        "operating_cash_flow": operating_cash_flow,
         "market_cap": info.get("marketCap"),
         "enterprise_value": info.get("enterpriseValue"),
         "shares_outstanding": info.get("sharesOutstanding"),

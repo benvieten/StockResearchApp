@@ -28,6 +28,7 @@ from langgraph.graph import END, StateGraph
 
 from backend.agents import fundamental, quant, sector, sentiment, technical
 from backend.agents import synthesis as synthesis_agent
+from backend.core.backtest import save_prediction
 from backend.core.data_models import AnalystData, FinalReport, TraderProfile
 from backend.core.regime import RegimeSignal, get_regime
 from backend.data.price import get_analyst_data
@@ -242,6 +243,27 @@ async def run_research(ticker: str, trader_profile: TraderProfile | None = None)
 
     report = FinalReport.model_validate(report_dict)
     log.info("graph_done", ticker=ticker, verdict=report.verdict)
+
+    # Record prediction for future backtesting (analyst cache already warm — no network)
+    signal_scores = report_dict.get("signal_scores") or {}
+    composite = (
+        sum(signal_scores.values()) / len(signal_scores) if signal_scores else None
+    )
+    entry_price: float | None = None
+    try:
+        analyst_raw = await get_analyst_data(ticker)
+        entry_price = analyst_raw.get("current_price")
+    except Exception:
+        pass
+    save_prediction(
+        ticker=ticker,
+        verdict=report.verdict,
+        conviction=report.conviction,
+        composite_score=composite,
+        horizon=report.recommended_horizon,
+        price_at_prediction=entry_price,
+    )
+
     return report
 
 

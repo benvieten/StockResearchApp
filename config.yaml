@@ -52,7 +52,7 @@ cache:
   directory: "./cache"
   ttl_hours: 24
   # Increment version when data shape changes to bust stale cache entries
-  schema_version: 1
+  schema_version: 2
 
 rate_limits:
   reddit_delay_seconds: 1.0

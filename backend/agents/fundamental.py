@@ -68,6 +68,18 @@ def compute_ratios(financials: dict) -> dict:
             return None
         return a / b
 
+    def _nth(lst: list | None, n: int) -> float | None:
+        """Get nth element without affecting has_nulls — for optional Piotroski fields."""
+        if lst is None or len(lst) <= n:
+            return None
+        return lst[n]
+
+    def _opt_div(a: float | None, b: float | None) -> float | None:
+        """Safe division without affecting has_nulls — for optional Piotroski fields."""
+        if a is None or b is None or b == 0:
+            return None
+        return a / b
+
     rev = financials.get("revenue") or []
     revenue_0 = _first(rev)
     revenue_1 = rev[1] if len(rev) > 1 else None
@@ -81,6 +93,19 @@ def compute_ratios(financials: dict) -> dict:
     total_debt_0 = _first(financials.get("total_debt"))
     total_equity_0 = _first(financials.get("total_equity"))
     fcf_0 = _first(financials.get("free_cash_flow"))
+
+    # Piotroski fields — optional; missing fields degrade the score but not data_quality
+    gross_profit_1 = _nth(financials.get("gross_profit"), 1)
+    net_income_1 = _nth(financials.get("net_income"), 1)
+    total_debt_1 = _nth(financials.get("total_debt"), 1)
+    total_equity_1 = _nth(financials.get("total_equity"), 1)
+    total_assets_0 = _nth(financials.get("total_assets"), 0)
+    total_assets_1 = _nth(financials.get("total_assets"), 1)
+    current_assets_0 = _nth(financials.get("current_assets"), 0)
+    current_assets_1 = _nth(financials.get("current_assets"), 1)
+    current_liabilities_0 = _nth(financials.get("current_liabilities"), 0)
+    current_liabilities_1 = _nth(financials.get("current_liabilities"), 1)
+    ocf_0 = _nth(financials.get("operating_cash_flow"), 0)
 
     market_cap = financials.get("market_cap")
     enterprise_value = financials.get("enterprise_value")
@@ -126,6 +151,53 @@ def compute_ratios(financials: dict) -> dict:
     roe = _safe_div(net_income_0, total_equity_0)
     fcf_yield = _safe_div(fcf_0, market_cap)
 
+    # ── Piotroski F-Score (0–9) ─────────────────────────────────────────────────
+    # Each signal is 1 if condition met, 0 otherwise, None if data unavailable.
+    # Score is sum of available signals; None if fewer than 5 signals computable.
+    roa_0 = _opt_div(net_income_0, total_assets_0)
+    roa_1 = _opt_div(net_income_1, total_assets_1)
+    # OCF / Total Assets
+    ocf_ta = _opt_div(ocf_0, total_assets_0)
+    # Change in ROA
+    delta_roa = (roa_0 - roa_1) if (roa_0 is not None and roa_1 is not None) else None
+    # Accruals ratio: (Net Income - OCF) / Total Assets
+    accruals_ratio = (
+        (net_income_0 - ocf_0) / total_assets_0
+        if (net_income_0 is not None and ocf_0 is not None and total_assets_0 is not None and total_assets_0 != 0)
+        else None
+    )
+    # Change in leverage (lower = better)
+    lev_0 = _opt_div(total_debt_0, total_assets_0)
+    lev_1 = _opt_div(total_debt_1, total_assets_1)
+    delta_lev = (lev_0 - lev_1) if (lev_0 is not None and lev_1 is not None) else None
+    # Change in current ratio
+    cr_0 = _opt_div(current_assets_0, current_liabilities_0)
+    cr_1 = _opt_div(current_assets_1, current_liabilities_1)
+    delta_cr = (cr_0 - cr_1) if (cr_0 is not None and cr_1 is not None) else None
+    # Change in gross margin
+    gm_0 = _opt_div(gross_profit_0, revenue_0)
+    gm_1 = _opt_div(gross_profit_1, revenue_1)
+    delta_gm = (gm_0 - gm_1) if (gm_0 is not None and gm_1 is not None) else None
+    # Change in asset turnover
+    at_0 = _opt_div(revenue_0, total_assets_0)
+    at_1 = _opt_div(revenue_1, total_assets_1)
+    delta_at = (at_0 - at_1) if (at_0 is not None and at_1 is not None) else None
+    # Change in shares (dilution check) — skip: not worth adding another yfinance field
+    # Assemble 9 binary signals
+    signals = [
+        (1 if roa_0 > 0 else 0) if roa_0 is not None else None,       # F1: positive ROA
+        (1 if ocf_ta > 0 else 0) if ocf_ta is not None else None,      # F2: positive OCF/Assets
+        (1 if delta_roa > 0 else 0) if delta_roa is not None else None, # F3: ROA improving
+        (1 if accruals_ratio < 0 else 0) if accruals_ratio is not None else None,  # F4: OCF > NI
+        (1 if delta_lev < 0 else 0) if delta_lev is not None else None, # F5: leverage falling
+        (1 if delta_cr > 0 else 0) if delta_cr is not None else None,   # F6: liquidity improving
+        None,                                                             # F7: no dilution (skipped)
+        (1 if delta_gm > 0 else 0) if delta_gm is not None else None,  # F8: gross margin improving
+        (1 if delta_at > 0 else 0) if delta_at is not None else None,  # F9: asset turnover improving
+    ]
+    available = [s for s in signals if s is not None]
+    piotroski_score: int | None = sum(available) if len(available) >= 5 else None
+
     return {
         "pe": pe,
         "pb": pb,
@@ -139,6 +211,8 @@ def compute_ratios(financials: dict) -> dict:
         "debt_to_equity": debt_to_equity,
         "roe": roe,
         "fcf_yield": fcf_yield,
+        "piotroski_score": piotroski_score,
+        "accruals_ratio": accruals_ratio,
         "data_quality": "partial" if has_nulls else "full",
     }
 
@@ -165,6 +239,9 @@ Your task:
 3. List key positive flags (e.g. strong FCF, expanding margins)
 4. List key negative flags (e.g. high leverage, shrinking revenue)
 5. Write a brief reasoning (2-4 sentences)
+
+Piotroski F-Score guidance (if provided): 0-2 = weak, 3-5 = average, 6-7 = good, 8-9 = excellent.
+Accruals ratio guidance: negative = OCF exceeds net income (earnings quality is HIGH); positive = accruals-driven earnings (lower quality).
 
 Be precise. Use the numbers given — do not invent ratios."""
 

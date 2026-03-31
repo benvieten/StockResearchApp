@@ -13,6 +13,9 @@ __pycache__/
 # Cache — never commit fetched data
 cache/
 
+# Backtest prediction store
+backtest/
+
 # OS
 .DS_Store
 Thumbs.db
