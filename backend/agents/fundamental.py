@@ -21,6 +21,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.data_models import FundamentalSignal
 from backend.core.model_router import get_model_router
+from backend.data._cache import load_cache, save_cache
 from backend.data.price import get_financials
 
 log = structlog.get_logger()
@@ -283,13 +284,18 @@ def _fmt_ratios(ratios: dict) -> str:
 
 
 async def run(ticker: str) -> FundamentalSignal:
-    model = get_model_router().get_model("fundamental")
+    cached = load_cache(ticker, "signal_fundamental")
+    if cached is not None:
+        log.info("fundamental_agent_cache_hit", ticker=ticker)
+        return FundamentalSignal.model_validate(cached)
 
+    model = get_model_router().get_model("fundamental")
     log.info("fundamental_agent_start", ticker=ticker, model=model)
     financials = await get_financials(ticker)
     ratios = compute_ratios(financials)
 
     signal = await _call_llm(model, ratios, ticker)
+    save_cache(ticker, "signal_fundamental", signal.model_dump())
     log.info("fundamental_agent_done", ticker=ticker, verdict=signal.valuation_verdict)
     return signal
 

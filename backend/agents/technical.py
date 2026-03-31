@@ -23,6 +23,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 from backend.core.data_models import TechnicalSignal
 from backend.core.model_router import get_model_router
 from backend.core.regime import RegimeSignal, get_regime
+from backend.data._cache import load_cache, save_cache
 from backend.data.price import get_ohlcv
 
 log = structlog.get_logger()
@@ -215,8 +216,12 @@ Determine:
 
 
 async def run(ticker: str, regime: RegimeSignal | None = None) -> TechnicalSignal:
-    model = get_model_router().get_model("technical")
+    cached = load_cache(ticker, "signal_technical")
+    if cached is not None:
+        log.info("technical_agent_cache_hit", ticker=ticker)
+        return TechnicalSignal.model_validate(cached)
 
+    model = get_model_router().get_model("technical")
     log.info("technical_agent_start", ticker=ticker, model=model)
 
     # Fetch OHLCV and regime concurrently; regime is optional (graph may pre-fetch it)
@@ -229,6 +234,7 @@ async def run(ticker: str, regime: RegimeSignal | None = None) -> TechnicalSigna
     indicators = compute_indicators(df)
 
     signal = await _call_llm(model, indicators, ticker, regime)
+    save_cache(ticker, "signal_technical", signal.model_dump())
     log.info("technical_agent_done", ticker=ticker, direction=signal.direction, regime=regime.regime)
     return signal
 

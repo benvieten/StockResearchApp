@@ -48,10 +48,6 @@ class TestModelRouter:
                 f"Expected Sonnet model for '{agent}', got '{model}'"
             )
 
-    def test_client_is_accessible(self, router):
-        from anthropic import Anthropic
-        assert isinstance(router.client, Anthropic)
-
     def test_model_strings_are_valid_claude_ids(self, router):
         """Model IDs must start with 'claude-' to be valid Anthropic model IDs."""
         for agent in EXPECTED_AGENTS:

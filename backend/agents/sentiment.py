@@ -21,6 +21,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.data_models import SentimentSignal
 from backend.core.model_router import get_model_router
+from backend.data._cache import load_cache, save_cache
 from backend.data.fear_greed import get_fear_greed
 from backend.data.news import get_news
 from backend.data.price import get_short_interest
@@ -311,8 +312,12 @@ If adjusted_score < raw_score, explain both the bot discount and/or hype discoun
 
 
 async def run(ticker: str) -> SentimentSignal:
-    model = get_model_router().get_model("sentiment")
+    cached = load_cache(ticker, "signal_sentiment")
+    if cached is not None:
+        log.info("sentiment_agent_cache_hit", ticker=ticker)
+        return SentimentSignal.model_validate(cached)
 
+    model = get_model_router().get_model("sentiment")
     log.info("sentiment_agent_start", ticker=ticker, model=model)
 
     reddit_posts, news_items, short_data, fg_data = await asyncio.gather(
@@ -366,6 +371,7 @@ async def run(ticker: str) -> SentimentSignal:
         )
         signal = signal.model_copy(update={"adjusted_score": max(-1.0, min(1.0, discounted))})
 
+    save_cache(ticker, "signal_sentiment", signal.model_dump())
     log.info("sentiment_agent_done", ticker=ticker, bot_risk=signal.bot_risk,
              adjusted_score=signal.adjusted_score)
     return signal

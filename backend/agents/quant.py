@@ -20,6 +20,7 @@ import structlog
 
 from backend.core.config import get_config
 from backend.core.data_models import QuantSignal
+from backend.data._cache import load_cache, save_cache
 from backend.data.price import get_financials, get_ohlcv
 
 log = structlog.get_logger()
@@ -82,8 +83,8 @@ def compute_quality_score(
 
 def compute_value_score(
     pe: float | None,
-    ey_min: float,
-    ey_max: float,
+    ey_min: float = 0.0,
+    ey_max: float = 0.15,
 ) -> float | None:
     """
     Score value via earnings yield (1/PE), normalized to [ey_min, ey_max] range.
@@ -100,7 +101,7 @@ def compute_value_score(
     return max(0.0, min(1.0, score))
 
 
-def compute_low_vol_score(df: pd.DataFrame, window: int) -> float:
+def compute_low_vol_score(df: pd.DataFrame, window: int = 90) -> float:
     """
     Score low-volatility factor.
 
@@ -258,6 +259,11 @@ def _compute_period_returns(df: pd.DataFrame, windows: list[int]) -> dict[str, f
 
 
 async def run(ticker: str) -> QuantSignal:
+    cached = load_cache(ticker, "signal_quant")
+    if cached is not None:
+        log.info("quant_agent_cache_hit", ticker=ticker)
+        return QuantSignal.model_validate(cached)
+
     log.info("quant_agent_start", ticker=ticker)
 
     ohlcv_task = asyncio.create_task(get_ohlcv(ticker))
@@ -308,6 +314,7 @@ async def run(ticker: str) -> QuantSignal:
         },
         data_quality=data_quality,
     )
+    save_cache(ticker, "signal_quant", signal.model_dump())
     log.info("quant_agent_done", ticker=ticker, composite=composite,
              return_zscore=return_zscore, volume_ratio=volume_ratio)
     return signal
