@@ -21,9 +21,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.data_models import SentimentSignal
 from backend.core.model_router import get_model_router
+from backend.data.fear_greed import get_fear_greed
 from backend.data.news import get_news
+from backend.data.price import get_short_interest
 from backend.data.reddit import get_reddit_posts
-from backend.data.stocktwits import get_stocktwits_messages
 
 log = structlog.get_logger()
 
@@ -38,13 +39,12 @@ _SPAM_WINDOW_SECONDS = 6 * 3600   # 6-hour window for burst detection
 _SPAM_POST_THRESHOLD = 3
 
 # Hype spike thresholds.
-# Our data collection is bounded: ~200 Reddit posts (50/sub × 4 subs) +
-# ~50 StockTwits + ~30 news = ~280 max. These tiers are calibrated to that
-# ceiling. A mention_volume near the ceiling means all sources are saturated —
+# Data collection ceiling: ~200 Reddit posts (50/sub × 4 subs) + ~30 news = ~230 max.
+# A mention_volume near the ceiling means all sources are saturated —
 # the stock is being discussed everywhere, which is historically a top signal.
-_HYPE_VOLUME_MEDIUM = 100   # elevated but not unusual for large-caps
-_HYPE_VOLUME_HIGH   = 175   # most sources returning near-max results
-_HYPE_VOLUME_EXTREME = 240  # essentially full saturation across all sources
+_HYPE_VOLUME_MEDIUM  = 80   # elevated but not unusual for large-caps
+_HYPE_VOLUME_HIGH    = 140  # most sources returning near-max results
+_HYPE_VOLUME_EXTREME = 200  # essentially full saturation across all sources
 
 
 def compute_hype_factor(mention_volume: int, adjusted_score: float) -> float:
@@ -168,8 +168,9 @@ async def _call_llm(
     clean_posts: list[dict],
     flagged_posts: list[dict],
     news_headlines: list[str],
-    stocktwits_msgs: list[dict],
     mention_volume: int,
+    short_interest: dict | None = None,
+    fear_greed: dict | None = None,
 ) -> SentimentSignal:
     client = _get_client()
 
@@ -181,10 +182,48 @@ async def _call_llm(
         f"- [FLAGGED] {p['title']}" for p in flagged_posts[:10]
     )
     news_text = "\n".join(f"- {h}" for h in news_headlines[:20])
-    st_text = "\n".join(
-        f"- [{m.get('sentiment', 'N/A')}] {m['body'][:120]}"
-        for m in stocktwits_msgs[:20]
-    ) if stocktwits_msgs else "StockTwits: no data available (API restricted)"
+
+    # ── Short interest block ──────────────────────────────────────────────────
+    if short_interest:
+        si_float = short_interest.get("short_percent_of_float")
+        si_ratio = short_interest.get("short_ratio")
+        si_float_str = f"{si_float * 100:.1f}%" if si_float is not None else "n/a"
+        si_ratio_str = f"{si_ratio:.1f} days" if si_ratio is not None else "n/a"
+        # Contextualise: >20% float is very high, >10% elevated, <5% low
+        if si_float is not None:
+            if si_float > 0.20:
+                si_context = "VERY HIGH — strong institutional bearish conviction; significant short-squeeze risk"
+            elif si_float > 0.10:
+                si_context = "ELEVATED — notable short interest; bears have a meaningful position"
+            elif si_float > 0.05:
+                si_context = "MODERATE — typical range, no strong signal either way"
+            else:
+                si_context = "LOW — little institutional short positioning"
+        else:
+            si_context = "unavailable"
+        short_text = (
+            f"  Short % of float: {si_float_str} ({si_context})\n"
+            f"  Days to cover: {si_ratio_str}"
+        )
+    else:
+        short_text = "  DATA UNAVAILABLE"
+
+    # ── Fear & Greed block ────────────────────────────────────────────────────
+    if fear_greed:
+        fg_score = fear_greed.get("score")
+        fg_rating = fear_greed.get("rating", "unknown")
+        fg_history = fear_greed.get("history", {})
+        fg_score_str = f"{fg_score:.0f}/100" if fg_score is not None else "n/a"
+        history_str = ", ".join(
+            f"{k}={v:.0f}" for k, v in fg_history.items() if v is not None
+        )
+        fg_text = (
+            f"  Current: {fg_score_str} — {fg_rating.title()}\n"
+            f"  History: {history_str}\n"
+            f"  Note: scores <25=extreme fear, 25-44=fear, 45-55=neutral, 56-75=greed, >75=extreme greed"
+        )
+    else:
+        fg_text = "  DATA UNAVAILABLE"
 
     # Classify mention volume so the LLM understands the hype context
     if mention_volume >= _HYPE_VOLUME_EXTREME:
@@ -198,7 +237,7 @@ async def _call_llm(
 
     prompt = f"""You are a market sentiment analyst. Analyse sentiment for {ticker}.
 
-=== REDDIT POSTS (clean, {len(clean_posts)} total) ===
+=== REDDIT POSTS (clean, title-matched only, {len(clean_posts)} total) ===
 {clean_text or 'No clean Reddit posts found.'}
 
 === REDDIT POSTS (bot-flagged, {len(flagged_posts)} total) ===
@@ -207,8 +246,11 @@ async def _call_llm(
 === NEWS HEADLINES ({len(news_headlines)} total) ===
 {news_text or 'No news found.'}
 
-=== STOCKTWITS MESSAGES ===
-{st_text}
+=== SHORT INTEREST (institutional positioning — money on the line) ===
+{short_text}
+
+=== CNN FEAR & GREED INDEX (market-wide sentiment composite) ===
+{fg_text}
 
 Total mention volume: {volume_label}
 
@@ -221,16 +263,21 @@ is likely already priced in. Apply the following discipline:
 - Uniformly bullish content with little dissent is MORE suspicious than mixed content.
 - Fear/negative sentiment spikes are generally more informative than euphoria spikes
   and should NOT be discounted in the same way.
+- Short interest and Fear & Greed are harder signals than social media — weight them
+  more heavily. Very high short float (>15%) combined with bullish social posts often
+  signals a short-squeeze setup rather than genuine organic optimism.
 
 Your task:
 1. raw_score: unweighted aggregate sentiment [-1.0 bearish to 1.0 bullish]
 2. adjusted_score: discount for (a) bot/flagged content AND (b) crowd-overreaction
-   when volume is elevated and sentiment is uniformly bullish
+   when volume is elevated and sentiment is uniformly bullish. Short interest and
+   Fear & Greed should anchor this score — social media is noisy, money is not.
 3. bot_risk: "low" / "medium" / "high" — your assessment of manipulation risk
-4. source_breakdown: score per source (reddit, news, stocktwits) as dict
+4. source_breakdown: score per source (reddit, news, short_interest, fear_greed) as dict
 5. narrative_themes: 3-6 key themes dominating discussion
 6. mention_volume: total mentions across all sources
-7. reasoning: 2-4 sentence analysis — if you applied a hype discount, explain it
+7. reasoning: 2-4 sentences — cite short interest and Fear & Greed explicitly when
+   they conflict with or confirm social media sentiment
 
 If adjusted_score < raw_score, explain both the bot discount and/or hype discount in reasoning."""
 
@@ -251,8 +298,7 @@ If adjusted_score < raw_score, explain both the bot discount and/or hype discoun
             data = dict(block.input)
             data["mention_volume"] = mention_volume
             has_partial = (
-                len(stocktwits_msgs) == 0
-                or len(news_headlines) == 0
+                len(news_headlines) == 0
                 or (len(clean_posts) == 0 and len(flagged_posts) == 0)
             )
             data.setdefault("data_quality", "partial" if has_partial else "full")
@@ -269,22 +315,40 @@ async def run(ticker: str) -> SentimentSignal:
 
     log.info("sentiment_agent_start", ticker=ticker, model=model)
 
-    reddit_task = asyncio.create_task(get_reddit_posts(ticker))
-    news_task = asyncio.create_task(get_news(ticker))
-    st_task = asyncio.create_task(get_stocktwits_messages(ticker))
-
-    reddit_posts, news_items, st_msgs = await asyncio.gather(
-        reddit_task, news_task, st_task
+    reddit_posts, news_items, short_data, fg_data = await asyncio.gather(
+        get_reddit_posts(ticker),
+        get_news(ticker),
+        get_short_interest(ticker),
+        get_fear_greed(),
     )
 
-    flagged = apply_bot_heuristics(reddit_posts)
+    # Only pass posts where the ticker appears in the title — body-only mentions
+    # are typically tangential (watchlists, comparison posts) and introduce noise.
+    ticker_upper = ticker.upper()
+    title_matched = [
+        p for p in reddit_posts
+        if ticker_upper in p.get("title", "").upper()
+    ]
+
+    flagged = apply_bot_heuristics(title_matched)
     clean = [p for p in flagged if not p["bot_flag"]]
     bots = [p for p in flagged if p["bot_flag"] or p["suspicious_flag"]]
     news_headlines = [item["headline"] for item in news_items]
-    mention_volume = len(reddit_posts) + len(news_items) + len(st_msgs)
+    mention_volume = len(title_matched) + len(news_items)
+
+    log.info(
+        "sentiment_reddit_filtered",
+        ticker=ticker,
+        total_posts=len(reddit_posts),
+        title_matched=len(title_matched),
+        clean=len(clean),
+        bot_flagged=len(bots),
+    )
 
     signal = await _call_llm(
-        model, ticker, clean, bots, news_headlines, st_msgs, mention_volume
+        model, ticker, clean, bots, news_headlines, mention_volume,
+        short_interest=short_data,
+        fear_greed=fg_data,
     )
 
     # Mathematical guardrail: apply hype discount on top of whatever the LLM returned.

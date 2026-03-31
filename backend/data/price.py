@@ -63,6 +63,30 @@ async def get_company_info(ticker: str) -> dict:
     return data
 
 
+async def get_short_interest(ticker: str) -> dict:
+    """Return short interest metrics from yfinance (already in t.info — no extra network call)."""
+    cached = load_cache(ticker, "short_interest")
+    if cached is not None:
+        return cached
+
+    log.info("fetching_short_interest", ticker=ticker)
+    data = await asyncio.to_thread(_fetch_short_interest, ticker)
+    save_cache(ticker, "short_interest", data)
+    return data
+
+
+async def get_analyst_data(ticker: str) -> dict:
+    """Return Wall Street analyst price targets and consensus recommendation."""
+    cached = load_cache(ticker, "analyst")
+    if cached is not None:
+        return cached
+
+    log.info("fetching_analyst_data", ticker=ticker)
+    data = await asyncio.to_thread(_fetch_analyst_data, ticker)
+    save_cache(ticker, "analyst", data)
+    return data
+
+
 # ── Sync fetch helpers (run in thread pool via asyncio.to_thread) ──────────────
 
 
@@ -105,8 +129,12 @@ def _fetch_financials(ticker: str) -> dict:
         bs = bs.sort_index(axis=1, ascending=False)
         total_debt = _row_values(bs, "Total Debt")
         total_equity = _row_values(bs, "Stockholders Equity")
+        total_assets = _row_values(bs, "Total Assets")
+        current_assets = _row_values(bs, "Current Assets")
+        current_liabilities = _row_values(bs, "Current Liabilities")
     else:
-        total_debt = total_equity = None
+        total_debt = total_equity = total_assets = None
+        current_assets = current_liabilities = None
 
     # Cash flow
     cf = t.cashflow
@@ -131,6 +159,61 @@ def _fetch_financials(ticker: str) -> dict:
         "price": info.get("currentPrice") or info.get("regularMarketPrice"),
         "trailing_pe": info.get("trailingPE"),
         "book_value_per_share": info.get("bookValue"),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _fetch_short_interest(ticker: str) -> dict:
+    t = yf.Ticker(ticker)
+    info: dict = t.info or {}
+
+    shares_short = info.get("sharesShort")
+    short_float = info.get("shortPercentOfFloat")
+    short_ratio = info.get("shortRatio")          # days-to-cover
+    shares_outstanding = info.get("sharesOutstanding")
+
+    # Compute short % of float as decimal if yfinance returns it as a fraction vs percent
+    # yfinance returns shortPercentOfFloat as a decimal (e.g. 0.065 = 6.5%)
+    short_float_pct = _float_or_none(short_float)
+
+    return {
+        "shares_short": int(shares_short) if shares_short else None,
+        "short_percent_of_float": short_float_pct,
+        "short_ratio": _float_or_none(short_ratio),
+        "shares_outstanding": int(shares_outstanding) if shares_outstanding else None,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _fetch_analyst_data(ticker: str) -> dict:
+    t = yf.Ticker(ticker)
+    info: dict = t.info or {}
+
+    price = info.get("currentPrice") or info.get("regularMarketPrice")
+    target_mean = info.get("targetMeanPrice")
+    target_high = info.get("targetHighPrice")
+    target_low = info.get("targetLowPrice")
+    target_median = info.get("targetMedianPrice")
+    num_analysts = info.get("numberOfAnalystOpinions")
+    recommendation_mean = info.get("recommendationMean")
+    recommendation_key = info.get("recommendationKey")
+
+    upside = None
+    price_f = _float_or_none(price)
+    target_mean_f = _float_or_none(target_mean)
+    if price_f and target_mean_f and price_f > 0:
+        upside = (target_mean_f - price_f) / price_f
+
+    return {
+        "current_price": price_f,
+        "target_mean": target_mean_f,
+        "target_high": _float_or_none(target_high),
+        "target_low": _float_or_none(target_low),
+        "target_median": _float_or_none(target_median),
+        "num_analysts": int(num_analysts) if num_analysts else None,
+        "recommendation_mean": _float_or_none(recommendation_mean),
+        "recommendation_key": recommendation_key,
+        "upside_to_mean": upside,
         "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
 

@@ -3,9 +3,10 @@ import { HeroSection } from '@/components/blocks/HeroSection'
 import { TraderProfileForm } from '@/components/TraderProfileForm'
 import { AgentProgressTracker } from '@/components/AgentProgressTracker'
 import { ReportDashboard } from '@/components/ReportDashboard'
+import { WatchlistView } from '@/components/WatchlistView'
 import type { AgentName, AgentState, FinalReport, RegimeInfo, SSEEvent, TraderProfile } from '@/types'
 
-type AppView = 'hero' | 'profile' | 'researching' | 'report'
+type AppView = 'hero' | 'profile' | 'researching' | 'report' | 'watchlist'
 
 function App() {
   const [view, setView] = useState<AppView>('hero')
@@ -15,6 +16,10 @@ function App() {
   const [agents, setAgents] = useState<Partial<Record<AgentName, AgentState>>>({})
   const [report, setReport] = useState<FinalReport | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const handleOpenWatchlist = useCallback(() => {
+    setView('watchlist')
+  }, [])
 
   // Step 1: hero collects ticker, then we show the profile form
   const handleTickerSubmit = useCallback((inputTicker: string) => {
@@ -123,7 +128,20 @@ function App() {
   return (
     <div className="min-h-screen bg-[#080808] text-white">
       {view === 'hero' && (
-        <HeroSection onAnalyze={handleTickerSubmit} />
+        <HeroSection onAnalyze={handleTickerSubmit} onWatchlist={handleOpenWatchlist} />
+      )}
+
+      {view === 'watchlist' && (
+        <WatchlistView
+          onAnalyze={(t) => {
+            setTicker(t)
+            setAgents({})
+            setReport(null)
+            setError(null)
+            setView('profile')
+          }}
+          onBack={() => setView('hero')}
+        />
       )}
 
       {view === 'profile' && (

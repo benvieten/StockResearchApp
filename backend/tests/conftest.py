@@ -74,11 +74,6 @@ def aapl_reddit() -> list:
     return _load_fixture("reddit")
 
 
-@pytest.fixture(scope="session")
-def aapl_stocktwits() -> list:
-    return _load_fixture("stocktwits")
-
-
 # ── Agent signal fixtures ──────────────────────────────────────────────────────
 # These are populated by running `make validate-phase3` and saving outputs.
 # Synthesis tests depend on all five being present.

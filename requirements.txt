@@ -13,6 +13,7 @@ yfinance
 feedparser
 beautifulsoup4
 httpx
+fear-greed
 
 # Data processing
 pandas

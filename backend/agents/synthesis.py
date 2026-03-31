@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from datetime import datetime, timezone
+from typing import Any
 
 import structlog
 from anthropic import AsyncAnthropic
@@ -22,6 +23,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.config import SynthesisConfig, get_config
 from backend.core.data_models import (
+    AnalystData,
     FinalReport,
     FundamentalSignal,
     QuantSignal,
@@ -55,6 +57,7 @@ def normalise_signals(
     quant: QuantSignal | None,
     sector: SectorSignal | None,
     sentiment: SentimentSignal | None,
+    analyst: AnalystData | None = None,
 ) -> dict[str, float]:
     """
     Map each agent's primary metric to a normalised [0, 1] score.
@@ -86,12 +89,22 @@ def normalise_signals(
     # Sentiment: remap [-1, 1] → [0, 1]
     sentiment_score = (sentiment.adjusted_score + 1.0) / 2.0 if sentiment is not None else 0.5
 
+    # Analyst consensus: primary = upside to mean target (capped ±50%)
+    # Fallback = recommendation_mean (1=strong buy → 1.0, 5=strong sell → 0.0)
+    if analyst is not None and analyst.upside_to_mean is not None:
+        analyst_score = max(0.0, min(1.0, analyst.upside_to_mean + 0.5))
+    elif analyst is not None and analyst.recommendation_mean is not None:
+        analyst_score = (5.0 - analyst.recommendation_mean) / 4.0
+    else:
+        analyst_score = 0.5
+
     return {
         "fundamental": fundamental.quality_score if fundamental is not None else 0.5,
         "technical": tech_score,
         "quant": quant.composite_score if quant is not None else 0.5,
         "sector": sector_score,
         "sentiment": sentiment_score,
+        "analyst": analyst_score,
     }
 
 
@@ -251,6 +264,7 @@ async def _call_llm(
     conviction: str,
     trader_profile: TraderProfile | None = None,
     full_consensus: bool = False,
+    analyst: AnalystData | None = None,
 ) -> FinalReport:
     client = _get_client()
 
@@ -302,6 +316,25 @@ async def _call_llm(
         f"  Themes: {', '.join(sentiment.narrative_themes[:4])}\n"
         f"  Reasoning: {sentiment.reasoning}"
     ) if sentiment else "  DATA UNAVAILABLE — signal failed"
+
+    def _price(v: float | None) -> str:
+        return f"${v:.2f}" if v is not None else "n/a"
+
+    def _pct_upside(v: float | None) -> str:
+        return f"{v * 100:+.1f}%" if v is not None else "n/a"
+
+    if analyst is not None and any([analyst.target_mean, analyst.recommendation_key]):
+        analyst_text = (
+            f"  Current price: {_price(analyst.current_price)}\n"
+            f"  12-month targets: mean={_price(analyst.target_mean)}, "
+            f"high={_price(analyst.target_high)}, low={_price(analyst.target_low)}\n"
+            f"  Upside to mean target: {_pct_upside(analyst.upside_to_mean)}\n"
+            f"  Consensus: {analyst.recommendation_key or 'n/a'} "
+            f"(mean={analyst.recommendation_mean:.1f}/5.0 — 1=strong buy, 5=strong sell)\n"
+            f"  Analyst count: {analyst.num_analysts or 'n/a'}"
+        )
+    else:
+        analyst_text = "  DATA UNAVAILABLE — no analyst coverage found"
 
     # ── Trader profile context block ──────────────────────────────────────────
     if trader_profile:
@@ -376,6 +409,9 @@ SECTOR (score {signal_scores['sector']:.2f})
 SENTIMENT (score {signal_scores['sentiment']:.2f})
 {sent_text}
 
+ANALYST CONSENSUS (score {signal_scores['analyst']:.2f})
+{analyst_text}
+
 === COMPOSITE ===
 Pre-computed verdict: {verdict} | Conviction: {conviction}
 Signal scores: {', '.join(f'{k}={v:.2f}' for k, v in signal_scores.items())}
@@ -397,6 +433,12 @@ Your task — synthesise all signals into a final investment opinion:
    one risk related to consensus/sentiment if scores are uniformly high
 4. conflicts: list any significant disagreements between agents
    — if full consensus, note "All agents agree — crowded setup, mean-reversion risk"
+5. recommended_horizon: classify as exactly one of:
+   - "short_term" (days to weeks) — strong technical momentum, elevated sentiment, clear chart setup; fundamentals are secondary
+   - "medium_term" (weeks to months) — near-term catalyst visible (earnings, product cycle, sector rotation), balanced signals
+   - "long_term" (1+ year) — high fundamental quality, sustainable moat, undervalued or fairly valued; short-term signals are noise
+   Pick the horizon where THIS stock's edge is strongest given the current signals. Do not default to "medium_term" — be decisive.
+6. horizon_rationale: exactly one sentence explaining why that horizon fits best (cite the dominant signal driving the choice).
 
 Use the pre-computed verdict and conviction — do not change them.
 Focus your narrative on the *why*, not just restating the scores."""
@@ -415,7 +457,7 @@ Focus your narrative on the *why*, not just restating the scores."""
 
     for block in response.content:
         if block.type == "tool_use":
-            data = dict(block.input)
+            data: dict[str, Any] = dict(block.input)
             data["ticker"] = ticker
             data["verdict"] = verdict
             data["conviction"] = conviction
@@ -438,6 +480,7 @@ async def run(
     sentiment: SentimentSignal | None,
     regime: RegimeSignal | None = None,
     trader_profile: TraderProfile | None = None,
+    analyst_data: AnalystData | None = None,
 ) -> FinalReport:
     cfg = get_config()
     model = get_model_router().get_model("synthesis")
@@ -462,7 +505,7 @@ async def run(
         weights={k: round(v, 3) for k, v in weights.items()},
     )
 
-    signal_scores = normalise_signals(fundamental, technical, quant, sector, sentiment)
+    signal_scores = normalise_signals(fundamental, technical, quant, sector, sentiment, analyst_data)
     composite = compute_composite(signal_scores, weights)
     full_consensus = check_full_consensus(signal_scores)
     verdict = score_to_verdict(composite, cfg.synthesis)
@@ -478,6 +521,7 @@ async def run(
         signal_scores, verdict, conviction,
         trader_profile=trader_profile,
         full_consensus=full_consensus,
+        analyst=analyst_data,
     )
     log.info(
         "synthesis_agent_done",

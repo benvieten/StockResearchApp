@@ -59,6 +59,17 @@ class SynthesisConfig(BaseModel):
     sell_threshold: float = 0.25
 
 
+class ScreenerConfig(BaseModel):
+    top_n: int = 15
+    min_market_cap_millions: int = 500
+    min_avg_volume: int = 500_000
+    screener_queries: list[str] = ["most_actives", "day_gainers", "undervalued_large_caps"]
+
+
+class WatchlistConfig(BaseModel):
+    max_concurrent: int = 2
+
+
 class AppConfig(BaseModel):
     anthropic: AnthropicConfig = AnthropicConfig()
     signal_weights: dict[str, float] = {}
@@ -69,6 +80,8 @@ class AppConfig(BaseModel):
     sector_etf_map: dict[str, str] = {}
     quant: QuantConfig = QuantConfig()
     synthesis: SynthesisConfig = SynthesisConfig()
+    screener: ScreenerConfig = ScreenerConfig()
+    watchlist: WatchlistConfig = WatchlistConfig()
 
 
 _config: AppConfig | None = None

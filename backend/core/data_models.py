@@ -72,6 +72,28 @@ class SentimentSignal(BaseModel):
     data_quality: DataQuality
 
 
+# ── Analyst data ───────────────────────────────────────────────────────────────
+
+
+class AnalystData(BaseModel):
+    """
+    Wall Street analyst consensus data from yfinance.
+
+    - target_mean / target_high / target_low: 12-month price targets
+    - recommendation_mean: 1.0 = strong buy, 3.0 = hold, 5.0 = strong sell
+    - upside_to_mean: (target_mean - current_price) / current_price
+    """
+    current_price: float | None = None
+    target_mean: float | None = None
+    target_high: float | None = None
+    target_low: float | None = None
+    target_median: float | None = None
+    num_analysts: int | None = None
+    recommendation_mean: float | None = None
+    recommendation_key: str | None = None
+    upside_to_mean: float | None = None
+
+
 # ── Trader profile ─────────────────────────────────────────────────────────────
 
 
@@ -99,4 +121,6 @@ class FinalReport(BaseModel):
     bear_case: list[str]
     conflicts: list[str]         # where agents disagree
     signal_scores: dict[str, float]  # normalized 0-1 score per agent
+    recommended_horizon: Literal["short_term", "medium_term", "long_term"]
+    horizon_rationale: str       # one sentence explaining the horizon fit
     generated_at: str

@@ -147,11 +147,11 @@ class TestSentimentSignal:
     def test_valid_signal(self):
         from backend.core.data_models import SentimentSignal
         signal = SentimentSignal(
-            reasoning="Reddit is cautiously bullish; StockTwits skews bearish.",
+            reasoning="Reddit is cautiously bullish; news skews bearish.",
             raw_score=0.2,
             adjusted_score=0.15,
             bot_risk="low",
-            source_breakdown={"reddit": 0.3, "stocktwits": -0.1, "news": 0.4},
+            source_breakdown={"reddit": 0.3, "news": 0.4},
             narrative_themes=["earnings beat", "buyback program", "macro headwinds"],
             mention_volume=342,
             data_quality="full",
@@ -200,6 +200,8 @@ class TestFinalReport:
             bear_case=["High valuation", "China risk"],
             conflicts=["Technical bullish but fundamentals overvalued"],
             signal_scores={"fundamental": 0.65, "technical": 0.72},
+            recommended_horizon="medium_term",
+            horizon_rationale="Balanced signals favour a medium-term hold.",
             generated_at="2026-03-18T12:00:00Z",
         )
         assert report.ticker == "AAPL"
@@ -232,6 +234,8 @@ class TestFinalReport:
             bear_case=["High PE"],
             conflicts=[],
             signal_scores={},
+            recommended_horizon="long_term",
+            horizon_rationale="Fundamentals dominate; short-term noise is irrelevant.",
             generated_at="2026-03-18T12:00:00Z",
         )
         dumped = report.model_dump_json()

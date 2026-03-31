@@ -9,36 +9,43 @@ anthropic:
     explain_simple: "claude-haiku-4-5-20251001"
 
 # Default weights (used as fallback if regime detection fails)
+# analyst = Wall Street consensus targets (12-month price targets + rec rating)
 signal_weights:
-  fundamental: 0.30
-  technical: 0.20
-  sentiment: 0.20
-  sector: 0.20
-  quant: 0.10
+  fundamental: 0.27
+  technical: 0.18
+  sentiment: 0.18
+  sector: 0.18
+  quant: 0.09
+  analyst: 0.10
 
 # Regime-conditioned weight presets — synthesis agent selects based on market regime.
 # In bull regimes, momentum/technical signals are more reliable.
 # In bear regimes, fundamental quality and quant factors dominate.
 # In transitional regimes, weights revert toward the default balanced allocation.
+# analyst weight is slightly higher in bear (targets are reset lower, upside is meaningful)
+# and slightly higher in bull (consensus upgrades drive momentum).
 regime_signal_weights:
   bull:
-    fundamental: 0.25
-    technical: 0.30
-    sentiment: 0.15
-    sector: 0.20
-    quant: 0.10
+    fundamental: 0.22
+    technical: 0.27
+    sentiment: 0.13
+    sector: 0.18
+    quant: 0.09
+    analyst: 0.11
   bear:
-    fundamental: 0.40
-    technical: 0.15
-    sentiment: 0.10
-    sector: 0.15
-    quant: 0.20
+    fundamental: 0.36
+    technical: 0.13
+    sentiment: 0.09
+    sector: 0.13
+    quant: 0.18
+    analyst: 0.11
   transitional:
-    fundamental: 0.30
-    technical: 0.20
-    sentiment: 0.20
-    sector: 0.20
-    quant: 0.10
+    fundamental: 0.27
+    technical: 0.18
+    sentiment: 0.18
+    sector: 0.18
+    quant: 0.09
+    analyst: 0.10
 
 cache:
   enabled: true
@@ -80,6 +87,18 @@ quant:
   earnings_yield_max: 0.15
   volatility_window_days: 90
   momentum_windows_months: [3, 6, 12]
+
+screener:
+  top_n: 15
+  min_market_cap_millions: 500
+  min_avg_volume: 500000
+  screener_queries:
+    - most_actives
+    - day_gainers
+    - undervalued_large_caps
+
+watchlist:
+  max_concurrent: 2
 
 # Synthesis verdict thresholds (composite score)
 synthesis:

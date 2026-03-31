@@ -323,11 +323,7 @@ function SectorDetails({ signal }: { signal: Record<string, unknown> }) {
 
 function SentimentDetails({ signal }: { signal: Record<string, unknown> }) {
   const themes = signal.narrative_themes as string[] | undefined
-  const rawSources = signal.source_breakdown as Record<string, number> | undefined
-  // Filter out StockTwits — no longer a data source
-  const sources = rawSources
-    ? Object.fromEntries(Object.entries(rawSources).filter(([k]) => k !== 'stocktwits'))
-    : undefined
+  const sources = signal.source_breakdown as Record<string, number> | undefined
   const botRisk = signal.bot_risk as string | undefined
 
   const botColor = botRisk === 'low' ? 'text-emerald-400' : botRisk === 'medium' ? 'text-amber-400' : 'text-red-400'

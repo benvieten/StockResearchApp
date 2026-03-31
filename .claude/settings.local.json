@@ -13,7 +13,9 @@
       "Bash(C:/Users/Olive/.venvs/stock-research-app/Scripts/python.exe -m pytest backend/tests/phase4/test_graph.py::TestResearchStateSchema -v)",
       "Bash(cmd.exe /c \"npm create vite@latest frontend -- --template react-ts 2>&1\")",
       "mcp__claude_ai_Hugging_Face__paper_search",
-      "mcp__playwright__browser_navigate"
+      "mcp__playwright__browser_navigate",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
@@ -27,6 +29,24 @@
             "command": "bash .claude/hooks/lint_python.sh",
             "timeout": 15,
             "statusMessage": "Linting Python file..."
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/run_related_tests.sh",
+            "timeout": 30,
+            "statusMessage": "Running related tests..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sync_claude_md.sh",
+            "timeout": 60,
+            "statusMessage": "Syncing CLAUDE.md..."
           }
         ]
       }

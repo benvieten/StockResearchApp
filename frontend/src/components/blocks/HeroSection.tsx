@@ -4,6 +4,7 @@ import { Search, TrendingUp, Brain, BarChart2, Activity, Globe, MessageSquare } 
 
 interface HeroSectionProps {
   onAnalyze: (ticker: string) => void
+  onWatchlist?: () => void
 }
 
 const RetroGrid = ({
@@ -49,7 +50,7 @@ const AGENTS = [
   { icon: Brain, label: 'Synthesis' },
 ]
 
-export function HeroSection({ onAnalyze }: HeroSectionProps) {
+export function HeroSection({ onAnalyze, onWatchlist }: HeroSectionProps) {
   const [ticker, setTicker] = React.useState('')
   const [error, setError] = React.useState('')
 
@@ -159,9 +160,22 @@ export function HeroSection({ onAnalyze }: HeroSectionProps) {
           )}
         </form>
 
-        <p className="text-xs text-zinc-600 mb-16">
-          Try: AAPL · MSFT · NVDA · TSLA · ONDS
-        </p>
+        <div className="flex items-center gap-4 mb-16">
+          <p className="text-xs text-zinc-600">
+            Try: AAPL · MSFT · NVDA · TSLA · ONDS
+          </p>
+          {onWatchlist && (
+            <>
+              <span className="text-zinc-700">·</span>
+              <button
+                onClick={onWatchlist}
+                className="text-xs text-violet-400 hover:text-violet-300 transition-colors underline underline-offset-2"
+              >
+                View Today's Watchlist
+              </button>
+            </>
+          )}
+        </div>
 
         {/* Agent grid */}
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3 max-w-2xl w-full">

@@ -14,6 +14,7 @@ SSE notes:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from contextlib import asynccontextmanager
@@ -27,9 +28,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
+from backend.core.config import get_config
 from backend.core.data_models import TraderProfile
 from backend.core.graph import run_research, stream_research
 from backend.core.model_router import get_model_router
+from backend.data.screener import get_candidates
 
 load_dotenv()
 log = structlog.get_logger()
@@ -169,6 +172,71 @@ async def research_stream(req: ResearchRequest) -> StreamingResponse:
             "Connection": "keep-alive",
         },
     )
+
+
+@app.get("/watchlist/tickers")
+async def watchlist_tickers() -> dict:
+    """
+    Return today's agent-discovered ticker candidates.
+    Calls the screener (cached daily) — instant on repeat requests.
+    """
+    tickers = await get_candidates()
+    return {"tickers": tickers}
+
+
+@app.post("/watchlist")
+async def run_watchlist() -> dict:
+    """
+    Discover today's candidate tickers via the screener, run each through
+    the full research pipeline, and return results grouped by recommended_horizon.
+
+    Discovery is cached daily — only the LLM analysis costs tokens on first run.
+    Tickers run with a concurrency semaphore to avoid overwhelming the API.
+    """
+    cfg = get_config()
+    tickers = await get_candidates()
+    max_concurrent = cfg.watchlist.max_concurrent
+    log.info("watchlist_start", tickers=tickers, max_concurrent=max_concurrent)
+
+    sem = asyncio.Semaphore(max_concurrent)
+
+    async def _run_one(ticker: str) -> dict | None:
+        async with sem:
+            try:
+                report = await run_research(ticker)
+                return report.model_dump()
+            except Exception as exc:
+                log.error("watchlist_ticker_failed", ticker=ticker, error=str(exc))
+                return None
+
+    results = await asyncio.gather(*[_run_one(t) for t in tickers])
+
+    grouped: dict[str, list[dict]] = {
+        "short_term": [],
+        "medium_term": [],
+        "long_term": [],
+    }
+    for report in results:
+        if report is None:
+            continue
+        horizon = report.get("recommended_horizon", "medium_term")
+        grouped.setdefault(horizon, []).append(report)
+
+    # Sort each bucket by composite signal score (best first)
+    def _score(r: dict) -> float:
+        scores = r.get("signal_scores", {})
+        return sum(scores.values()) / len(scores) if scores else 0.0
+
+    for bucket in grouped.values():
+        bucket.sort(key=_score, reverse=True)
+
+    log.info(
+        "watchlist_done",
+        short=len(grouped["short_term"]),
+        medium=len(grouped["medium_term"]),
+        long=len(grouped["long_term"]),
+    )
+    return grouped
 
 
 _EXPLAIN_SCHEMA = {

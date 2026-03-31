@@ -99,7 +99,15 @@ export interface FinalReport {
   bear_case: string[]
   conflicts: string[]
   signal_scores: Record<string, number>
+  recommended_horizon: TimeHorizon
+  horizon_rationale: string
   generated_at: string
+}
+
+export interface WatchlistResult {
+  short_term: FinalReport[]
+  medium_term: FinalReport[]
+  long_term: FinalReport[]
 }
 
 export interface RegimeInfo {

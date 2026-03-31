@@ -34,7 +34,6 @@ async def generate_data_fixtures(ticker: str) -> None:
     from backend.data.price import get_ohlcv, get_financials, get_company_info
     from backend.data.news import get_news
     from backend.data.reddit import get_reddit_posts
-    from backend.data.stocktwits import get_stocktwits_messages
 
     sources = {
         "ohlcv": get_ohlcv,
@@ -42,7 +41,6 @@ async def generate_data_fixtures(ticker: str) -> None:
         "company_info": get_company_info,
         "news": get_news,
         "reddit": get_reddit_posts,
-        "stocktwits": get_stocktwits_messages,
     }
 
     for name, fn in sources.items():

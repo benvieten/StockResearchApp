@@ -28,8 +28,9 @@ from langgraph.graph import END, StateGraph
 
 from backend.agents import fundamental, quant, sector, sentiment, technical
 from backend.agents import synthesis as synthesis_agent
-from backend.core.data_models import FinalReport, TraderProfile
+from backend.core.data_models import AnalystData, FinalReport, TraderProfile
 from backend.core.regime import RegimeSignal, get_regime
+from backend.data.price import get_analyst_data
 
 log = structlog.get_logger()
 
@@ -61,7 +62,7 @@ async def run_fundamental(state: ResearchState) -> dict:
     except Exception as exc:
         log.error("fundamental_agent_failed", ticker=ticker, error=str(exc))
         writer({"type": "agent_error", "agent": "fundamental", "error": str(exc)})
-        return {"agent_signals": []}
+        return {"agent_signals": [{"agent": "fundamental", "signal": None}]}
 
 
 async def run_technical(state: ResearchState) -> dict:
@@ -75,7 +76,7 @@ async def run_technical(state: ResearchState) -> dict:
     except Exception as exc:
         log.error("technical_agent_failed", ticker=ticker, error=str(exc))
         writer({"type": "agent_error", "agent": "technical", "error": str(exc)})
-        return {"agent_signals": []}
+        return {"agent_signals": [{"agent": "technical", "signal": None}]}
 
 
 async def run_quant(state: ResearchState) -> dict:
@@ -89,7 +90,7 @@ async def run_quant(state: ResearchState) -> dict:
     except Exception as exc:
         log.error("quant_agent_failed", ticker=ticker, error=str(exc))
         writer({"type": "agent_error", "agent": "quant", "error": str(exc)})
-        return {"agent_signals": []}
+        return {"agent_signals": [{"agent": "quant", "signal": None}]}
 
 
 async def run_sector(state: ResearchState) -> dict:
@@ -103,7 +104,7 @@ async def run_sector(state: ResearchState) -> dict:
     except Exception as exc:
         log.error("sector_agent_failed", ticker=ticker, error=str(exc))
         writer({"type": "agent_error", "agent": "sector", "error": str(exc)})
-        return {"agent_signals": []}
+        return {"agent_signals": [{"agent": "sector", "signal": None}]}
 
 
 async def run_sentiment(state: ResearchState) -> dict:
@@ -117,7 +118,7 @@ async def run_sentiment(state: ResearchState) -> dict:
     except Exception as exc:
         log.error("sentiment_agent_failed", ticker=ticker, error=str(exc))
         writer({"type": "agent_error", "agent": "sentiment", "error": str(exc)})
-        return {"agent_signals": []}
+        return {"agent_signals": [{"agent": "sentiment", "signal": None}]}
 
 
 async def run_synthesis(state: ResearchState) -> dict:
@@ -144,11 +145,20 @@ async def run_synthesis(state: ResearchState) -> dict:
         ]
         log.warning("synthesis_missing_signals", ticker=ticker, missing=missing)
 
+    # Fetch analyst data — quick yfinance call, cached daily
+    analyst_data: AnalystData | None = None
+    try:
+        raw = await get_analyst_data(ticker)
+        analyst_data = AnalystData.model_validate(raw)
+    except Exception as exc:
+        log.warning("analyst_data_fetch_failed", ticker=ticker, error=str(exc))
+
     try:
         report = await synthesis_agent.run(
             ticker, fund_sig, tech_sig, quant_sig, sect_sig, sent_sig,
             regime=state.get("regime"),
             trader_profile=state.get("trader_profile"),
+            analyst_data=analyst_data,
         )
         writer({"type": "agent_complete", "agent": "synthesis", "signal": report.model_dump()})
         return {"final_report": report.model_dump()}
