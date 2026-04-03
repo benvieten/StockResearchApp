@@ -32,6 +32,7 @@ from backend.core.config import get_config
 from backend.core.data_models import TraderProfile
 from backend.core.graph import run_research, stream_research
 from backend.core.model_router import get_model_router
+from backend.core.backtest import get_ticker_history
 from backend.data.screener import get_candidates
 
 load_dotenv()
@@ -172,6 +173,39 @@ async def research_stream(req: ResearchRequest) -> StreamingResponse:
             "Connection": "keep-alive",
         },
     )
+
+
+@app.get("/backtest/{ticker}")
+async def backtest_ticker(ticker: str) -> dict:
+    """
+    Return all saved predictions for a ticker, with outcome data for matured ones.
+
+    Response shape:
+        {
+          "ticker": "AAPL",
+          "predictions": [
+            {
+              "verdict": "hold",
+              "conviction": "low",
+              "composite_score": 0.42,
+              "horizon": "medium_term",
+              "price_at_prediction": 249.12,
+              "predicted_at": "2026-03-18T22:30:04+00:00",
+              "status": "matured",          // or "pending"
+              "elapsed_days": 16,
+              "target_days": 60,
+              "current_price": 261.50,      // matured only
+              "actual_return": 0.049        // matured only; null if price unavailable
+            },
+            ...
+          ]
+        }
+    """
+    ticker = ticker.strip().upper()
+    if not _TICKER_RE.match(ticker):
+        raise HTTPException(status_code=400, detail=f"Invalid ticker: {ticker}")
+    predictions = await asyncio.to_thread(get_ticker_history, ticker)
+    return {"ticker": ticker, "predictions": predictions}
 
 
 @app.get("/watchlist/tickers")

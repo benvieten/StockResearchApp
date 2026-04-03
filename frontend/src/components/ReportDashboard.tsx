@@ -7,6 +7,7 @@ import { SignalCard } from '@/components/SignalCard'
 import { DummiesMode } from '@/components/DummiesMode'
 import { ExplainTab } from '@/components/ExplainTab'
 import { ArrowLeft, CheckCircle, XCircle, AlertCircle, Brain, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2 } from 'lucide-react'
+import { BacktestWidget } from '@/components/BacktestWidget'
 
 const AGENT_ORDER: AgentName[] = ['fundamental', 'technical', 'quant', 'sector', 'sentiment', 'synthesis']
 
@@ -71,6 +72,9 @@ export function ReportDashboard({ ticker, report, agents, regime, traderProfile,
             {traderProfile && <TraderProfileChip profile={traderProfile} />}
             {/* Verdict */}
             <VerdictCard report={report} />
+
+            {/* Prior predictions track record */}
+            <BacktestWidget ticker={ticker} />
 
             {/* Dummies mode */}
             <DummiesMode report={report} />

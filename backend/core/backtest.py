@@ -132,3 +132,68 @@ def check_outcomes(min_days_elapsed: int = 25) -> list[dict]:
                 log.warning("backtest_outcome_parse_failed", error=str(exc))
 
     return outcomes
+
+
+def get_ticker_history(ticker: str) -> list[dict]:
+    """
+    Return all saved predictions for *ticker* (most recent first).
+
+    Each record includes:
+      - All original prediction fields
+      - status: "matured" | "pending"
+      - elapsed_days, target_days
+      - current_price, actual_return  (matured only; None if price unavailable)
+    """
+    bt_dir = _BACKTEST_DIR
+    if not bt_dir.exists():
+        return []
+
+    now = datetime.now(timezone.utc)
+    records: list[dict] = []
+
+    for jsonl_path in sorted(bt_dir.glob("predictions_*.jsonl")):
+        for line in jsonl_path.read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+                if rec.get("ticker") != ticker:
+                    continue
+                predicted_at = datetime.fromisoformat(rec["predicted_at"])
+                horizon = rec.get("horizon") or "medium_term"
+                target_days = _HORIZON_DAYS.get(horizon, 60)
+                elapsed = (now - predicted_at).days
+                is_mature = elapsed >= (target_days - 5)
+
+                if is_mature and rec.get("price_at_prediction"):
+                    entry_price = rec["price_at_prediction"]
+                    try:
+                        info = yf.Ticker(ticker).info or {}
+                        current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+                    except Exception:
+                        current_price = None
+
+                    actual_return = (
+                        (current_price - entry_price) / entry_price
+                        if current_price and entry_price and entry_price > 0
+                        else None
+                    )
+                    records.append({
+                        **rec,
+                        "status": "matured",
+                        "elapsed_days": elapsed,
+                        "target_days": target_days,
+                        "current_price": current_price,
+                        "actual_return": actual_return,
+                    })
+                else:
+                    records.append({
+                        **rec,
+                        "status": "pending",
+                        "elapsed_days": elapsed,
+                        "target_days": target_days,
+                    })
+            except Exception as exc:
+                log.warning("backtest_history_parse_failed", ticker=ticker, error=str(exc))
+
+    return sorted(records, key=lambda r: r.get("predicted_at", ""), reverse=True)
