@@ -175,39 +175,66 @@ function TraderProfileChip({ profile }: { profile: TraderProfile }) {
 function SignalScoreBar({ report }: { report: FinalReport }) {
   const agents: AgentName[] = ['fundamental', 'technical', 'quant', 'sector', 'sentiment']
   const labels: Record<string, string> = {
-    fundamental: 'Fund.',
-    technical: 'Tech.',
-    quant: 'Quant',
+    fundamental: 'Fundamental',
+    technical: 'Technical',
+    quant: 'Quantitative',
     sector: 'Sector',
-    sentiment: 'Sent.',
+    sentiment: 'Sentiment',
   }
+
+  const scores = agents
+    .map(name => ({ name, pct: Math.round((report.signal_scores[name] ?? 0) * 100) }))
+    .filter(({ pct }) => pct > 0)
+
+  const avg = Math.round(scores.reduce((s, x) => s + x.pct, 0) / scores.length)
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-      <p className="text-xs uppercase tracking-wider text-zinc-600 font-medium mb-5">Signal Scores</p>
-      <div className="flex items-end gap-3">
-        {agents.map(name => {
-          const score = report.signal_scores[name]
-          if (score == null) return null
-          const pct = Math.round(score * 100)
-          const color =
-            pct >= 65 ? 'from-emerald-500 to-emerald-400' :
-            pct >= 50 ? 'from-amber-500 to-amber-400' :
-            'from-red-500 to-red-400'
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-xs uppercase tracking-wider text-zinc-600 font-medium">Signal Scores</p>
+        <span className="text-xs text-zinc-500 font-mono">avg <span className="text-zinc-300 font-semibold">{avg}</span></span>
+      </div>
+
+      <div className="space-y-3">
+        {scores.map(({ name, pct }) => {
+          const barColor =
+            pct >= 65 ? 'bg-emerald-500' :
+            pct >= 50 ? 'bg-amber-500' :
+            'bg-red-500'
+          const textColor =
+            pct >= 65 ? 'text-emerald-400' :
+            pct >= 50 ? 'text-amber-400' :
+            'text-red-400'
+          const badgeBg =
+            pct >= 65 ? 'bg-emerald-500/10 border-emerald-500/20' :
+            pct >= 50 ? 'bg-amber-500/10 border-amber-500/20' :
+            'bg-red-500/10 border-red-500/20'
 
           return (
-            <div key={name} className="flex-1 flex flex-col items-center gap-2">
-              <span className="text-xs font-mono text-zinc-300 font-medium">{pct}</span>
-              <div className="w-full bg-white/5 rounded-full overflow-hidden" style={{ height: '80px' }}>
+            <div key={name} className="flex items-center gap-3">
+              <span className="text-xs text-zinc-400 w-24 flex-shrink-0">{labels[name]}</span>
+              <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                 <div
-                  className={cn('w-full rounded-full bg-gradient-to-t transition-all duration-1000', color)}
-                  style={{ height: `${pct}%`, marginTop: `${100 - pct}%` }}
+                  className={cn('h-full rounded-full transition-all duration-700', barColor)}
+                  style={{ width: `${pct}%` }}
                 />
               </div>
-              <span className="text-[11px] text-zinc-600">{labels[name]}</span>
+              {/* neutral midpoint tick */}
+              <span className={cn('text-xs font-mono font-semibold w-8 text-right flex-shrink-0 border rounded px-1', textColor, badgeBg)}>
+                {pct}
+              </span>
             </div>
           )
         })}
+      </div>
+
+      {/* reference line labels */}
+      <div className="mt-3 ml-[6.5rem] flex justify-between text-[10px] text-zinc-700 font-mono">
+        <span>0</span>
+        <span>25</span>
+        <span>50</span>
+        <span>75</span>
+        <span>100</span>
       </div>
     </div>
   )
