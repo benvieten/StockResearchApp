@@ -32,11 +32,15 @@ from backend.data._cache import load_cache, save_cache
 
 log = structlog.get_logger()
 
-_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/124.0.0.0 Safari/537.36"
-)
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+}
 
 # ── Exclusion list ──────────────────────────────────────────────────────────────
 # All-caps words that look like tickers but aren't stocks we want to analyze.
@@ -168,7 +172,7 @@ async def get_candidates(top_n: int | None = None) -> list[str]:
 
 async def _yahoo_trending() -> list[str]:
     url = "https://query1.finance.yahoo.com/v1/finance/trending/US?count=20&lang=en-US"
-    async with httpx.AsyncClient(headers={"User-Agent": _USER_AGENT}, timeout=10) as client:
+    async with httpx.AsyncClient(headers=_HEADERS, timeout=10) as client:
         resp = await client.get(url)
         resp.raise_for_status()
 
@@ -223,7 +227,7 @@ async def _reddit_hot_mentions(subreddits: list[str]) -> dict[str, int]:
     cfg = get_config()
     delay = cfg.rate_limits.reddit_delay_seconds
 
-    async with httpx.AsyncClient(headers={"User-Agent": _USER_AGENT}, timeout=20) as client:
+    async with httpx.AsyncClient(headers=_HEADERS, timeout=20) as client:
         for i, sub in enumerate(subreddits):
             if i > 0:
                 await asyncio.sleep(delay)
