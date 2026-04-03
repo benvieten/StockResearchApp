@@ -17,16 +17,30 @@ class ModelRouter:
     def get_model(self, agent_name: str) -> str:
         """Return the configured model ID for the given agent name.
 
-        Raises KeyError for unknown agent names so misconfiguration is
-        caught immediately rather than silently falling back to a default.
+        Checks ollama.models first, then anthropic.models.
+        Raises KeyError for unknown agent names.
         """
-        models = self.config.anthropic.models
-        if agent_name not in models:
-            raise KeyError(
-                f"No model configured for agent '{agent_name}'. "
-                f"Available agents: {list(models.keys())}"
-            )
-        return models[agent_name]
+        if agent_name in self.config.ollama.models:
+            return self.config.ollama.models[agent_name]
+        if agent_name in self.config.anthropic.models:
+            return self.config.anthropic.models[agent_name]
+        all_agents = list(self.config.ollama.models) + list(self.config.anthropic.models)
+        raise KeyError(
+            f"No model configured for agent '{agent_name}'. "
+            f"Available agents: {all_agents}"
+        )
+
+    def get_backend(self, agent_name: str) -> str:
+        """Return 'ollama' or 'anthropic' for the given agent name."""
+        if agent_name in self.config.ollama.models:
+            return "ollama"
+        if agent_name in self.config.anthropic.models:
+            return "anthropic"
+        raise KeyError(f"No backend configured for agent '{agent_name}'")
+
+    def get_ollama_base_url(self) -> str:
+        """Return the configured Ollama base URL."""
+        return self.config.ollama.base_url
 
 
 _router: ModelRouter | None = None

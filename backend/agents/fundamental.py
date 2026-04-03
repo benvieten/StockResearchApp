@@ -12,14 +12,12 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from datetime import datetime, timezone
 
 import structlog
-from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
-from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.data_models import FundamentalSignal
+from backend.core.llm import call_structured_llm
 from backend.core.model_router import get_model_router
 from backend.data._cache import load_cache, save_cache
 from backend.data.price import get_financials
@@ -27,14 +25,6 @@ from backend.data.price import get_financials
 log = structlog.get_logger()
 
 load_dotenv()
-_client: AsyncAnthropic | None = None
-
-
-def _get_client() -> AsyncAnthropic:
-    global _client
-    if _client is None:
-        _client = AsyncAnthropic()
-    return _client
 
 
 # ── Pure ratio computation (unit-tested independently) ─────────────────────────
@@ -221,13 +211,7 @@ def compute_ratios(financials: dict) -> dict:
 # ── LLM call ───────────────────────────────────────────────────────────────────
 
 
-@retry(
-    stop=stop_after_attempt(4),
-    wait=wait_exponential(multiplier=2, min=2, max=16) + wait_random(-0.5, 0.5),
-    reraise=True,
-)
-async def _call_llm(model: str, ratios: dict, ticker: str) -> FundamentalSignal:
-    client = _get_client()
+async def _call_llm(ratios: dict, ticker: str) -> FundamentalSignal:
     data_quality = ratios.pop("data_quality", "full")
 
     prompt = f"""You are a fundamental equity analyst. Analyse {ticker} using these pre-computed financial ratios:
@@ -246,26 +230,16 @@ Accruals ratio guidance: negative = OCF exceeds net income (earnings quality is 
 
 Be precise. Use the numbers given — do not invent ratios."""
 
-    schema = FundamentalSignal.model_json_schema()
-    schema.pop("$defs", None)
-    schema.pop("title", None)
-
-    response = await client.messages.create(
-        model=model,
+    data = await call_structured_llm(
+        agent_name="fundamental",
+        prompt=prompt,
+        tool_description="Submit the fundamental signal",
+        schema=FundamentalSignal.model_json_schema(),
         max_tokens=1024,
-        tools=[{"name": "submit", "description": "Submit the fundamental signal", "input_schema": schema}],
-        tool_choice={"type": "tool", "name": "submit"},
-        messages=[{"role": "user", "content": prompt}],
     )
-
-    for block in response.content:
-        if block.type == "tool_use":
-            data = dict(block.input)
-            data["data_quality"] = data_quality
-            data.setdefault("metrics", {k: v for k, v in ratios.items()})
-            return FundamentalSignal.model_validate(data)
-
-    raise ValueError("No tool_use block in fundamental LLM response")
+    data["data_quality"] = data_quality
+    data.setdefault("metrics", {k: v for k, v in ratios.items()})
+    return FundamentalSignal.model_validate(data)
 
 
 def _fmt_ratios(ratios: dict) -> str:
@@ -294,7 +268,7 @@ async def run(ticker: str) -> FundamentalSignal:
     financials = await get_financials(ticker)
     ratios = compute_ratios(financials)
 
-    signal = await _call_llm(model, ratios, ticker)
+    signal = await _call_llm(ratios, ticker)
     save_cache(ticker, "signal_fundamental", signal.model_dump())
     log.info("fundamental_agent_done", ticker=ticker, verdict=signal.valuation_verdict)
     return signal

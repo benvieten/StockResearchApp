@@ -16,11 +16,10 @@ import sys
 import pandas as pd
 import pandas_ta as ta
 import structlog
-from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
-from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.data_models import TechnicalSignal
+from backend.core.llm import call_structured_llm
 from backend.core.model_router import get_model_router
 from backend.core.regime import RegimeSignal, get_regime
 from backend.data._cache import load_cache, save_cache
@@ -29,14 +28,6 @@ from backend.data.price import get_ohlcv
 log = structlog.get_logger()
 
 load_dotenv()
-_client: AsyncAnthropic | None = None
-
-
-def _get_client() -> AsyncAnthropic:
-    global _client
-    if _client is None:
-        _client = AsyncAnthropic()
-    return _client
 
 
 # ── Indicator computation (unit-tested independently) ─────────────────────────
@@ -141,16 +132,9 @@ def _ohlcv_to_df(ohlcv: dict) -> pd.DataFrame:
 # ── LLM call ───────────────────────────────────────────────────────────────────
 
 
-@retry(
-    stop=stop_after_attempt(4),
-    wait=wait_exponential(multiplier=2, min=2, max=16) + wait_random(-0.5, 0.5),
-    reraise=True,
-)
 async def _call_llm(
-    model: str, indicators: dict, ticker: str, regime: RegimeSignal
+    indicators: dict, ticker: str, regime: RegimeSignal
 ) -> TechnicalSignal:
-    client = _get_client()
-
     # Format regime context so the LLM can interpret indicators correctly
     regime_conf_pct = f"{regime.confidence * 100:.0f}%"
     regime_ctx = f"{regime.regime.upper()} ({regime_conf_pct} confidence)"
@@ -190,26 +174,16 @@ Determine:
 - indicator_summary: 2-3 sentence description of the technical picture, referencing the regime
 - reasoning: your step-by-step reasoning, explaining how the regime shaped your interpretation"""
 
-    schema = TechnicalSignal.model_json_schema()
-    schema.pop("$defs", None)
-    schema.pop("title", None)
-
-    response = await client.messages.create(
-        model=model,
+    data = await call_structured_llm(
+        agent_name="technical",
+        prompt=prompt,
+        tool_description="Submit the technical signal",
+        schema=TechnicalSignal.model_json_schema(),
         max_tokens=1024,
-        tools=[{"name": "submit", "description": "Submit the technical signal", "input_schema": schema}],
-        tool_choice={"type": "tool", "name": "submit"},
-        messages=[{"role": "user", "content": prompt}],
     )
-
-    for block in response.content:
-        if block.type == "tool_use":
-            data = dict(block.input)
-            data["raw_indicators"] = {k: v for k, v in indicators.items()}
-            data.setdefault("data_quality", "full")
-            return TechnicalSignal.model_validate(data)
-
-    raise ValueError("No tool_use block in technical LLM response")
+    data["raw_indicators"] = {k: v for k, v in indicators.items()}
+    data.setdefault("data_quality", "full")
+    return TechnicalSignal.model_validate(data)
 
 
 # ── Public async entry point ───────────────────────────────────────────────────
@@ -233,7 +207,7 @@ async def run(ticker: str, regime: RegimeSignal | None = None) -> TechnicalSigna
     df = _ohlcv_to_df(ohlcv)
     indicators = compute_indicators(df)
 
-    signal = await _call_llm(model, indicators, ticker, regime)
+    signal = await _call_llm(indicators, ticker, regime)
     save_cache(ticker, "signal_technical", signal.model_dump())
     log.info("technical_agent_done", ticker=ticker, direction=signal.direction, regime=regime.regime)
     return signal

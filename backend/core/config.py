@@ -21,6 +21,11 @@ class AnthropicConfig(BaseModel):
     models: dict[str, str] = {}
 
 
+class OllamaConfig(BaseModel):
+    base_url: str = "http://localhost:11434"
+    models: dict[str, str] = {}
+
+
 class CacheConfig(BaseModel):
     enabled: bool = True
     directory: str = "./cache"
@@ -72,6 +77,7 @@ class WatchlistConfig(BaseModel):
 
 class AppConfig(BaseModel):
     anthropic: AnthropicConfig = AnthropicConfig()
+    ollama: OllamaConfig = OllamaConfig()
     signal_weights: dict[str, float] = {}
     regime_signal_weights: dict[str, dict[str, float]] = {}
     cache: CacheConfig = CacheConfig()

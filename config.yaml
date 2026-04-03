@@ -1,12 +1,16 @@
 anthropic:
   models:
-    technical: "claude-haiku-4-5-20251001"
-    fundamental: "claude-haiku-4-5-20251001"
-    quant: "claude-haiku-4-5-20251001"
     sector: "claude-sonnet-4-6"
     sentiment: "claude-sonnet-4-6"
     synthesis: "claude-sonnet-4-6"
     explain_simple: "claude-haiku-4-5-20251001"
+
+ollama:
+  base_url: "http://localhost:11434"
+  models:
+    fundamental: "qwen2.5:32b"
+    technical: "qwen2.5:32b"
+    quant: "qwen2.5:32b"
 
 # Default weights (used as fallback if regime detection fails)
 # analyst = Wall Street consensus targets (12-month price targets + rec rating)

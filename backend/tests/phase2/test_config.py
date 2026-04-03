@@ -11,7 +11,7 @@ import pytest
 pytestmark = [pytest.mark.phase2, pytest.mark.unit]
 
 EXPECTED_AGENTS = {"fundamental", "technical", "quant", "sector", "sentiment", "synthesis"}
-HAIKU_AGENTS = {"fundamental", "technical", "quant"}
+OLLAMA_AGENTS = {"fundamental", "technical", "quant"}
 SONNET_AGENTS = {"sector", "sentiment", "synthesis"}
 
 
@@ -32,17 +32,17 @@ class TestModelAssignments:
     def test_all_agents_have_model(self):
         from backend.core.config import get_config
         cfg = get_config()
+        all_models = {**cfg.anthropic.models, **cfg.ollama.models}
         for agent in EXPECTED_AGENTS:
-            assert agent in cfg.anthropic.models, f"No model assigned for agent '{agent}'"
-            assert cfg.anthropic.models[agent], f"Model for '{agent}' is empty"
+            assert agent in all_models, f"No model assigned for agent '{agent}'"
+            assert all_models[agent], f"Model for '{agent}' is empty"
 
-    def test_haiku_agents_use_haiku(self):
+    def test_ollama_agents_in_ollama_config(self):
         from backend.core.config import get_config
         cfg = get_config()
-        for agent in HAIKU_AGENTS:
-            model = cfg.anthropic.models[agent]
-            assert "haiku" in model.lower(), (
-                f"Agent '{agent}' should use Haiku, got '{model}'"
+        for agent in OLLAMA_AGENTS:
+            assert agent in cfg.ollama.models, (
+                f"Agent '{agent}' should be in ollama.models"
             )
 
     def test_sonnet_agents_use_sonnet(self):
