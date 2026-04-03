@@ -8,9 +8,9 @@ anthropic:
 ollama:
   base_url: "http://localhost:11434"
   models:
-    fundamental: "qwen2.5:32b"
-    technical: "qwen2.5:32b"
-    quant: "qwen2.5:32b"
+    fundamental: "qwen2.5:14b"
+    technical: "qwen2.5:14b"
+    quant: "qwen2.5:14b"
 
 # Default weights (used as fallback if regime detection fails)
 # analyst = Wall Street consensus targets (12-month price targets + rec rating)

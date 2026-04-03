@@ -20,6 +20,7 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 import httpx
@@ -28,6 +29,10 @@ from anthropic import AsyncAnthropic
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.model_router import get_model_router
+
+# Ollama runs one inference at a time; serialise requests so the httpx
+# timeout only starts when inference actually begins, not while queuing.
+_ollama_sem = asyncio.Semaphore(1)
 
 log = structlog.get_logger()
 
@@ -105,7 +110,11 @@ async def _call_ollama(
     max_tokens: int,
     base_url: str,
 ) -> dict:
-    """Call Ollama's OpenAI-compatible /v1/chat/completions endpoint with tool calling."""
+    """Call Ollama's OpenAI-compatible /v1/chat/completions endpoint with tool calling.
+
+    Serialises requests via _ollama_sem so that the httpx timeout only starts
+    when inference actually begins — not while waiting in Ollama's queue.
+    """
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -121,12 +130,15 @@ async def _call_ollama(
         "max_tokens": max_tokens,
         "stream": False,
     }
-    # Local inference can be slow for large models — allow up to 5 minutes
-    async with httpx.AsyncClient(timeout=300) as client:
-        resp = await client.post(f"{base_url}/v1/chat/completions", json=payload)
-        resp.raise_for_status()
+    # Serialise Ollama requests — only one runs at a time so the timeout
+    # starts when inference begins, not while waiting in Ollama's queue.
+    # Allow up to 10 minutes per request for large local models.
+    async with _ollama_sem:
+        async with httpx.AsyncClient(timeout=600) as client:
+            resp = await client.post(f"{base_url}/v1/chat/completions", json=payload)
+            resp.raise_for_status()
+            data = resp.json()
 
-    data = resp.json()
     choices = data.get("choices", [])
     if not choices:
         raise ValueError("Empty choices in Ollama response")
