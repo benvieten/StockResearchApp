@@ -34,6 +34,7 @@ from backend.core.data_models import TraderProfile
 from backend.core.graph import run_research, stream_research
 from backend.core.model_router import get_model_router
 from backend.core.backtest import get_ticker_history
+from backend.core.usage import get_daily_summary
 from backend.data.screener import get_candidates
 
 load_dotenv()
@@ -394,3 +395,27 @@ Do NOT use these words: P/E, MACD, RSI, EMA, quant, composite, conviction, senti
             status_code=500,
             detail={"error": str(exc), "ticker": req.ticker, "phase": "explain_simple"},
         )
+
+
+@app.get("/usage")
+async def usage(date: str | None = None) -> dict:
+    """
+    Return token usage and cost summary for a given date (YYYY-MM-DD).
+    Defaults to today UTC when no date is provided.
+
+    Response shape:
+        {
+          "date": "2026-04-05",
+          "calls": 12,
+          "total_tokens": 34567,
+          "total_cost_usd": 0.142,
+          "by_agent": {
+            "synthesis": {
+              "calls": 2, "input_tokens": 8000, "output_tokens": 3000,
+              "cost_usd": 0.069, "model": "claude-sonnet-4-6"
+            },
+            ...
+          }
+        }
+    """
+    return await asyncio.to_thread(get_daily_summary, date)

@@ -16,6 +16,9 @@ cache/
 # Backtest prediction store
 backtest/
 
+# Token usage logs
+usage/
+
 # OS
 .DS_Store
 Thumbs.db

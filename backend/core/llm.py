@@ -29,6 +29,7 @@ from anthropic import AsyncAnthropic
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.model_router import get_model_router
+from backend.core.usage import log_usage
 
 # Ollama runs one inference at a time; serialise requests so the httpx
 # timeout only starts when inference actually begins, not while queuing.
@@ -57,6 +58,7 @@ async def call_structured_llm(
     tool_description: str,
     schema: dict,
     max_tokens: int = 1024,
+    ticker: str = "",
 ) -> dict:
     """
     Call the LLM configured for *agent_name* with a single structured
@@ -75,24 +77,34 @@ async def call_structured_llm(
 
     if backend == "ollama":
         return await _call_ollama(
+            agent_name,
             model,
             prompt,
             tool_description,
             clean_schema,
             max_tokens,
             base_url=router.get_ollama_base_url(),
+            ticker=ticker,
         )
     return await _call_anthropic(
-        model, prompt, tool_description, clean_schema, max_tokens
+        agent_name,
+        model,
+        prompt,
+        tool_description,
+        clean_schema,
+        max_tokens,
+        ticker=ticker,
     )
 
 
 async def _call_anthropic(
+    agent_name: str,
     model: str,
     prompt: str,
     tool_description: str,
     schema: dict,
     max_tokens: int,
+    ticker: str = "",
 ) -> dict:
     client = _get_anthropic_client()
     response = await client.messages.create(
@@ -104,6 +116,14 @@ async def _call_anthropic(
         tool_choice={"type": "tool", "name": "submit"},
         messages=[{"role": "user", "content": prompt}],
     )
+    log_usage(
+        agent=agent_name,
+        model=model,
+        backend="anthropic",
+        input_tokens=response.usage.input_tokens,
+        output_tokens=response.usage.output_tokens,
+        ticker=ticker,
+    )
     for block in response.content:
         if block.type == "tool_use":
             return dict(block.input)
@@ -111,12 +131,14 @@ async def _call_anthropic(
 
 
 async def _call_ollama(
+    agent_name: str,
     model: str,
     prompt: str,
     tool_description: str,
     schema: dict,
     max_tokens: int,
     base_url: str,
+    ticker: str = "",
 ) -> dict:
     """Call Ollama's OpenAI-compatible /v1/chat/completions endpoint with tool calling.
 
@@ -152,6 +174,16 @@ async def _call_ollama(
     choices = data.get("choices", [])
     if not choices:
         raise ValueError("Empty choices in Ollama response")
+
+    usage = data.get("usage", {})
+    log_usage(
+        agent=agent_name,
+        model=model,
+        backend="ollama",
+        input_tokens=usage.get("prompt_tokens", 0),
+        output_tokens=usage.get("completion_tokens", 0),
+        ticker=ticker,
+    )
 
     tool_calls = choices[0].get("message", {}).get("tool_calls", [])
     if not tool_calls:

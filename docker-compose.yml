@@ -13,6 +13,7 @@ services:
       # Persist cache and backtest data on the host so they survive container restarts.
       - ./cache:/app/cache
       - ./backtest:/app/backtest
+      - ./usage:/app/usage
     ports:
       - "8000:8000"     # Exposed for direct access / debugging. Remove in pure-nginx setups.
     restart: unless-stopped
