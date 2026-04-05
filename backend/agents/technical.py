@@ -143,6 +143,9 @@ async def _call_llm(
     if regime.adx is not None:
         regime_ctx += f" | ADX: {regime.adx:.1f}"
 
+    def _f(v: float | None, fmt: str) -> str:
+        return format(v, fmt) if v is not None else "(not available)"
+
     prompt = f"""You are a technical analyst. Analyse {ticker} using these computed indicators:
 
 === MARKET REGIME (SPY-based) ===
@@ -157,15 +160,15 @@ Regime guidance:
   trend-following signals (EMA crossovers, MACD). Reduce confidence in any directional call.
 
 === {ticker} INDICATORS ===
-EMA 20: {indicators['ema_20']:.2f}
-EMA 50: {indicators['ema_50']:.2f}
-EMA 200: {indicators['ema_200']:.2f}
-RSI 14: {indicators['rsi_14']:.1f}
-MACD: {indicators['macd']:.4f}  Signal: {indicators['macd_signal']:.4f}  Hist: {indicators['macd_hist']:.4f}
-Bollinger Upper: {indicators['bb_upper']:.2f}  Mid: {indicators['bb_mid']:.2f}  Lower: {indicators['bb_lower']:.2f}
-ATR 14: {indicators['atr_14']:.2f}
-OBV: {indicators['obv']:.0f}
-Support: {indicators['support']:.2f}  Resistance: {indicators['resistance']:.2f}
+EMA 20: {_f(indicators['ema_20'], '.2f')}
+EMA 50: {_f(indicators['ema_50'], '.2f')}
+EMA 200: {_f(indicators['ema_200'], '.2f')}
+RSI 14: {_f(indicators['rsi_14'], '.1f')}
+MACD: {_f(indicators['macd'], '.4f')}  Signal: {_f(indicators['macd_signal'], '.4f')}  Hist: {_f(indicators['macd_hist'], '.4f')}
+Bollinger Upper: {_f(indicators['bb_upper'], '.2f')}  Mid: {_f(indicators['bb_mid'], '.2f')}  Lower: {_f(indicators['bb_lower'], '.2f')}
+ATR 14: {_f(indicators['atr_14'], '.2f')}
+OBV: {_f(indicators['obv'], '.0f')}
+Support: {_f(indicators['support'], '.2f')}  Resistance: {_f(indicators['resistance'], '.2f')}
 
 Determine:
 - direction: bullish / bearish / neutral
@@ -217,8 +220,6 @@ async def run(ticker: str, regime: RegimeSignal | None = None) -> TechnicalSigna
 
 
 if __name__ == "__main__":
-    import json
-
     ticker = sys.argv[1] if len(sys.argv) > 1 else "AAPL"
 
     async def main() -> None:

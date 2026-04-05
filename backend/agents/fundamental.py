@@ -89,7 +89,6 @@ def compute_ratios(financials: dict) -> dict:
     gross_profit_1 = _nth(financials.get("gross_profit"), 1)
     net_income_1 = _nth(financials.get("net_income"), 1)
     total_debt_1 = _nth(financials.get("total_debt"), 1)
-    total_equity_1 = _nth(financials.get("total_equity"), 1)
     total_assets_0 = _nth(financials.get("total_assets"), 0)
     total_assets_1 = _nth(financials.get("total_assets"), 1)
     current_assets_0 = _nth(financials.get("current_assets"), 0)
@@ -226,7 +225,7 @@ Your task:
 5. Write a brief reasoning (2-4 sentences)
 
 Piotroski F-Score guidance (if provided): 0-2 = weak, 3-5 = average, 6-7 = good, 8-9 = excellent.
-Accruals ratio guidance: negative = OCF exceeds net income (earnings quality is HIGH); positive = accruals-driven earnings (lower quality).
+Accruals ratio guidance: NEGATIVE value = OCF exceeds net income = earnings quality is HIGH (cash-backed earnings, good sign). POSITIVE value = net income exceeds OCF = accruals-driven earnings = lower quality (bad sign). Do NOT flag a negative accruals ratio as a concern.
 
 Be precise. Use the numbers given — do not invent ratios."""
 
@@ -239,6 +238,12 @@ Be precise. Use the numbers given — do not invent ratios."""
     )
     data["data_quality"] = data_quality
     data.setdefault("metrics", {k: v for k, v in ratios.items()})
+    # Ollama sometimes echoes "(not available)" or "N/A" as string values — coerce to None
+    if "metrics" in data:
+        data["metrics"] = {
+            k: (None if isinstance(v, str) else v)
+            for k, v in data["metrics"].items()
+        }
     return FundamentalSignal.model_validate(data)
 
 
@@ -246,7 +251,7 @@ def _fmt_ratios(ratios: dict) -> str:
     lines = []
     for k, v in ratios.items():
         if v is None:
-            lines.append(f"  {k}: N/A")
+            lines.append(f"  {k}: (not available)")
         elif isinstance(v, float):
             lines.append(f"  {k}: {v:.4f}")
         else:
@@ -278,8 +283,6 @@ async def run(ticker: str) -> FundamentalSignal:
 
 
 if __name__ == "__main__":
-    import json
-
     ticker = sys.argv[1] if len(sys.argv) > 1 else "AAPL"
 
     async def main() -> None:
