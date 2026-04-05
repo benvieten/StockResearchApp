@@ -36,3 +36,6 @@ env/
 
 # Docker
 .dockerignore
+
+# Playwright MCP logs/screenshots
+.playwright-mcp/
