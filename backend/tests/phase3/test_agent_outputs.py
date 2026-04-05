@@ -193,7 +193,6 @@ class TestSynthesisOutput:
 
 def _load_fixture(name: str) -> dict:
     """Helper for synthesis test which needs direct fixture loading."""
-    import json
     from pathlib import Path
     fixture_path = Path(__file__).parent.parent / "fixtures" / f"AAPL_{name}.json"
     if not fixture_path.exists():

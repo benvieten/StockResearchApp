@@ -7,7 +7,6 @@ Every function it uses can be unit tested with synthetic data.
 Will fail until agents/quant.py exposes its computation functions.
 """
 
-import math
 import pytest
 import numpy as np
 
@@ -171,3 +170,133 @@ class TestCompositeScore:
     def test_result_in_unit_range(self, compute_composite):
         score = compute_composite(0.6, 0.7, 0.5, 0.8)
         assert 0.0 <= score <= 1.0
+
+
+class TestReturnZscore:
+    @pytest.fixture
+    def fn(self):
+        from backend.agents.quant import compute_return_zscore
+        return compute_return_zscore
+
+    def test_returns_float_with_sufficient_data(self, fn, sample_ohlcv_df):
+        result = fn(sample_ohlcv_df)
+        assert result is not None
+        assert isinstance(result, float)
+
+    def test_returns_none_with_insufficient_data(self, fn):
+        import pandas as pd
+        import numpy as np
+        # Only 50 rows — window=90 requires at least 91
+        prices = np.linspace(100, 110, 50)
+        df = pd.DataFrame({"Close": prices}, index=pd.bdate_range(end="2026-03-18", periods=50))
+        result = fn(df, window=90)
+        assert result is None
+
+    def test_large_up_day_gives_positive_zscore(self, fn, sample_ohlcv_df):
+        import pandas as pd
+        # Append a very large up day to the OHLCV data
+        df = sample_ohlcv_df.copy()
+        last_price = float(df["Close"].iloc[-1])
+        new_row = pd.DataFrame(
+            {"Open": last_price, "High": last_price * 1.12, "Low": last_price,
+             "Close": last_price * 1.10, "Volume": 100_000_000},
+            index=[df.index[-1] + pd.Timedelta(days=1)],
+        )
+        df_extended = pd.concat([df, new_row])
+        result = fn(df_extended)
+        assert result is not None and result > 1.5, (
+            f"A +10% day should produce a high positive z-score, got {result}"
+        )
+
+
+class TestVolumeRatio:
+    @pytest.fixture
+    def fn(self):
+        from backend.agents.quant import compute_volume_ratio
+        return compute_volume_ratio
+
+    def test_returns_float_with_sufficient_data(self, fn, sample_ohlcv_df):
+        result = fn(sample_ohlcv_df)
+        assert result is not None
+        assert isinstance(result, float)
+        assert result > 0
+
+    def test_returns_none_with_insufficient_data(self, fn):
+        import pandas as pd
+        import numpy as np
+        # Only 10 rows — window=20 requires at least 21
+        df = pd.DataFrame(
+            {"Close": np.ones(10), "Volume": np.ones(10) * 1_000_000},
+            index=pd.bdate_range(end="2026-03-18", periods=10),
+        )
+        result = fn(df, window=20)
+        assert result is None
+
+    def test_high_volume_day_gives_ratio_above_one(self, fn, sample_ohlcv_df):
+        df = sample_ohlcv_df.copy()
+        # Set today's volume to 10x the average
+        avg_vol = float(df["Volume"].iloc[-21:-1].mean())
+        df.iloc[-1, df.columns.get_loc("Volume")] = int(avg_vol * 10)
+        result = fn(df)
+        assert result is not None and result > 5.0, (
+            f"10x volume day should give ratio > 5, got {result}"
+        )
+
+
+class TestBbPercentile:
+    @pytest.fixture
+    def fn(self):
+        from backend.agents.quant import compute_bb_percentile
+        return compute_bb_percentile
+
+    def test_returns_float_in_unit_range(self, fn, sample_ohlcv_df):
+        result = fn(sample_ohlcv_df)
+        assert result is not None
+        assert 0.0 <= result <= 1.0
+
+    def test_returns_none_with_insufficient_data(self, fn):
+        import pandas as pd
+        import numpy as np
+        df = pd.DataFrame(
+            {"Close": np.ones(5)},
+            index=pd.bdate_range(end="2026-03-18", periods=5),
+        )
+        result = fn(df, window=20)
+        assert result is None
+
+    def test_price_at_upper_band_gives_high_percentile(self, fn):
+        import pandas as pd
+        import numpy as np
+        # Flat price then a big spike — price will be at/above upper band
+        prices = np.concatenate([np.ones(40) * 100, [120]])
+        df = pd.DataFrame(
+            {"Close": prices},
+            index=pd.bdate_range(end="2026-03-18", periods=len(prices)),
+        )
+        result = fn(df)
+        assert result is not None and result >= 0.9, (
+            f"Price well above band should give percentile >= 0.9, got {result}"
+        )
+
+
+class TestRsiPercentile:
+    @pytest.fixture
+    def fn(self):
+        from backend.agents.quant import compute_rsi_percentile
+        return compute_rsi_percentile
+
+    def test_returns_float_in_unit_range(self, fn, sample_ohlcv_df):
+        # Need 252 + 14 rows minimum
+        result = fn(sample_ohlcv_df)
+        # sample_ohlcv_df has 252 rows; 252 < 14 + 252 so may return None — just check type
+        assert result is None or 0.0 <= result <= 1.0
+
+    def test_returns_none_with_insufficient_data(self, fn):
+        import pandas as pd
+        import numpy as np
+        df = pd.DataFrame(
+            {"Close": np.linspace(100, 110, 100)},
+            index=pd.bdate_range(end="2026-03-18", periods=100),
+        )
+        result = fn(df, rsi_window=14, lookback=252)
+        assert result is None

@@ -11,7 +11,6 @@ These tests use fixture data if available, or live cache if not.
 They do NOT make network calls unless LIVE_DATA=1 is set.
 """
 
-import os
 import pytest
 
 pytestmark = pytest.mark.phase1

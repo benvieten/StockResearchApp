@@ -40,7 +40,7 @@ class TestResearchStateSchema:
         )
 
         # Check it's Annotated — get_type_hints with include_extras=True preserves Annotated
-        origin = getattr(agent_signals_hint, "__class__", None)
+        getattr(agent_signals_hint, "__class__", None)
         metadata = getattr(agent_signals_hint, "__metadata__", ())
 
         assert len(metadata) > 0, (

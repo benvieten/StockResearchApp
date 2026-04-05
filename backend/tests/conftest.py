@@ -12,7 +12,6 @@ Fixtures are committed to the repo so tests always have data to run against.
 """
 
 import json
-import os
 from datetime import date, datetime
 from pathlib import Path
 
@@ -33,7 +32,7 @@ def _load_fixture(name: str) -> dict:
         return json.loads(fixture_path.read_text())
 
     # Fall back to cache — find most recent matching file
-    today = date.today().isoformat()
+    date.today().isoformat()
     candidates = sorted(
         CACHE_DIR.glob(f"{TEST_TICKER}_{name}_*.json"), reverse=True
     )
