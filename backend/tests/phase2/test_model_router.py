@@ -10,15 +10,24 @@ import pytest
 
 pytestmark = [pytest.mark.phase2, pytest.mark.unit]
 
-EXPECTED_AGENTS = ["fundamental", "technical", "quant", "sector", "sentiment", "synthesis"]
+EXPECTED_AGENTS = [
+    "fundamental",
+    "technical",
+    "quant",
+    "sector",
+    "sentiment",
+    "synthesis",
+]
 OLLAMA_AGENTS = ["fundamental", "technical", "quant"]
-ANTHROPIC_AGENTS = ["sector", "sentiment", "synthesis"]
+ANTHROPIC_AGENTS = ["sentiment", "synthesis"]
+HAIKU_AGENTS = ["sector"]
 
 
 @pytest.fixture(scope="module")
 def router():
     from backend.core.config import get_config
     from backend.core.model_router import ModelRouter
+
     return ModelRouter(get_config())
 
 
@@ -39,36 +48,43 @@ class TestModelRouter:
     def test_ollama_agents_return_ollama_model(self, router):
         for agent in OLLAMA_AGENTS:
             model = router.get_model(agent)
-            assert "qwen" in model.lower() or ":" in model, (
-                f"Expected Ollama model for '{agent}', got '{model}'"
-            )
+            assert (
+                "qwen" in model.lower() or ":" in model
+            ), f"Expected Ollama model for '{agent}', got '{model}'"
 
     def test_ollama_agents_have_ollama_backend(self, router):
         for agent in OLLAMA_AGENTS:
-            assert router.get_backend(agent) == "ollama", (
-                f"Expected ollama backend for '{agent}'"
-            )
+            assert (
+                router.get_backend(agent) == "ollama"
+            ), f"Expected ollama backend for '{agent}'"
 
     def test_anthropic_agents_have_anthropic_backend(self, router):
         for agent in ANTHROPIC_AGENTS:
-            assert router.get_backend(agent) == "anthropic", (
-                f"Expected anthropic backend for '{agent}'"
-            )
+            assert (
+                router.get_backend(agent) == "anthropic"
+            ), f"Expected anthropic backend for '{agent}'"
 
     def test_sonnet_agents_return_sonnet_model(self, router):
         for agent in ANTHROPIC_AGENTS:
             model = router.get_model(agent)
-            assert "sonnet" in model.lower(), (
-                f"Expected Sonnet model for '{agent}', got '{model}'"
-            )
+            assert (
+                "sonnet" in model.lower()
+            ), f"Expected Sonnet model for '{agent}', got '{model}'"
+
+    def test_haiku_agents_return_haiku_model(self, router):
+        for agent in HAIKU_AGENTS:
+            model = router.get_model(agent)
+            assert (
+                "haiku" in model.lower()
+            ), f"Expected Haiku model for '{agent}', got '{model}'"
 
     def test_anthropic_model_ids_are_valid_claude_ids(self, router):
         """Anthropic model IDs must start with 'claude-'."""
-        for agent in ANTHROPIC_AGENTS:
+        for agent in ANTHROPIC_AGENTS + HAIKU_AGENTS:
             model = router.get_model(agent)
-            assert model.startswith("claude-"), (
-                f"Model ID for '{agent}' doesn't start with 'claude-': '{model}'"
-            )
+            assert model.startswith(
+                "claude-"
+            ), f"Model ID for '{agent}' doesn't start with 'claude-': '{model}'"
 
     def test_unknown_backend_raises(self, router):
         with pytest.raises(KeyError):

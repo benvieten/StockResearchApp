@@ -212,7 +212,12 @@ async def run(ticker: str, regime: RegimeSignal | None = None) -> TechnicalSigna
 
     signal = await _call_llm(indicators, ticker, regime)
     save_cache(ticker, "signal_technical", signal.model_dump())
-    log.info("technical_agent_done", ticker=ticker, direction=signal.direction, regime=regime.regime)
+    log.info(
+        "technical_agent_done",
+        ticker=ticker,
+        direction=signal.direction,
+        regime=regime.regime,
+    )
     return signal
 
 

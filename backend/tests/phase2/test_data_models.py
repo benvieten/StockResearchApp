@@ -19,6 +19,7 @@ pytestmark = [pytest.mark.phase2, pytest.mark.unit]
 class TestTechnicalSignal:
     def test_valid_bullish(self):
         from backend.core.data_models import TechnicalSignal
+
         signal = TechnicalSignal(
             reasoning="EMA 20 crossed above EMA 50. RSI at 58.",
             direction="bullish",
@@ -33,10 +34,11 @@ class TestTechnicalSignal:
 
     def test_invalid_direction_raises(self):
         from backend.core.data_models import TechnicalSignal
+
         with pytest.raises(ValidationError):
             TechnicalSignal(
                 reasoning="test",
-                direction="very_bullish",   # not a valid Literal
+                direction="very_bullish",  # not a valid Literal
                 confidence=0.5,
                 key_levels={},
                 indicator_summary="",
@@ -46,11 +48,12 @@ class TestTechnicalSignal:
 
     def test_confidence_out_of_range_raises(self):
         from backend.core.data_models import TechnicalSignal
+
         with pytest.raises(ValidationError):
             TechnicalSignal(
                 reasoning="test",
                 direction="bullish",
-                confidence=1.5,   # > 1.0
+                confidence=1.5,  # > 1.0
                 key_levels={},
                 indicator_summary="",
                 raw_indicators={},
@@ -59,11 +62,13 @@ class TestTechnicalSignal:
 
     def test_has_reasoning_field(self):
         from backend.core.data_models import TechnicalSignal
+
         fields = TechnicalSignal.model_fields
         assert "reasoning" in fields, "TechnicalSignal must have a 'reasoning' field"
 
     def test_has_data_quality_field(self):
         from backend.core.data_models import TechnicalSignal
+
         fields = TechnicalSignal.model_fields
         assert "data_quality" in fields
 
@@ -71,6 +76,7 @@ class TestTechnicalSignal:
 class TestFundamentalSignal:
     def test_valid_signal(self):
         from backend.core.data_models import FundamentalSignal
+
         signal = FundamentalSignal(
             reasoning="P/E of 32 is elevated but margins are expanding.",
             quality_score=0.68,
@@ -83,11 +89,12 @@ class TestFundamentalSignal:
 
     def test_invalid_valuation_verdict_raises(self):
         from backend.core.data_models import FundamentalSignal
+
         with pytest.raises(ValidationError):
             FundamentalSignal(
                 reasoning="test",
                 quality_score=0.5,
-                valuation_verdict="neutral",   # not a valid Literal
+                valuation_verdict="neutral",  # not a valid Literal
                 key_flags=[],
                 metrics={},
                 data_quality="full",
@@ -95,10 +102,11 @@ class TestFundamentalSignal:
 
     def test_quality_score_out_of_range_raises(self):
         from backend.core.data_models import FundamentalSignal
+
         with pytest.raises(ValidationError):
             FundamentalSignal(
                 reasoning="test",
-                quality_score=-0.1,   # < 0.0
+                quality_score=-0.1,  # < 0.0
                 valuation_verdict="fair",
                 key_flags=[],
                 metrics={},
@@ -107,6 +115,7 @@ class TestFundamentalSignal:
 
     def test_partial_data_quality_accepted(self):
         from backend.core.data_models import FundamentalSignal
+
         signal = FundamentalSignal(
             reasoning="Some fields were missing.",
             quality_score=0.4,
@@ -121,6 +130,7 @@ class TestFundamentalSignal:
 class TestQuantSignal:
     def test_valid_signal(self):
         from backend.core.data_models import QuantSignal
+
         signal = QuantSignal(
             composite_score=0.61,
             factor_breakdown={
@@ -135,6 +145,7 @@ class TestQuantSignal:
 
     def test_composite_out_of_range_raises(self):
         from backend.core.data_models import QuantSignal
+
         with pytest.raises(ValidationError):
             QuantSignal(
                 composite_score=1.1,
@@ -146,6 +157,7 @@ class TestQuantSignal:
 class TestSentimentSignal:
     def test_valid_signal(self):
         from backend.core.data_models import SentimentSignal
+
         signal = SentimentSignal(
             reasoning="Reddit is cautiously bullish; news skews bearish.",
             raw_score=0.2,
@@ -161,12 +173,13 @@ class TestSentimentSignal:
 
     def test_invalid_bot_risk_raises(self):
         from backend.core.data_models import SentimentSignal
+
         with pytest.raises(ValidationError):
             SentimentSignal(
                 reasoning="test",
                 raw_score=0.0,
                 adjusted_score=0.0,
-                bot_risk="extreme",   # not a valid Literal
+                bot_risk="extreme",  # not a valid Literal
                 source_breakdown={},
                 narrative_themes=[],
                 mention_volume=0,
@@ -175,11 +188,12 @@ class TestSentimentSignal:
 
     def test_adjusted_score_out_of_range_raises(self):
         from backend.core.data_models import SentimentSignal
+
         with pytest.raises(ValidationError):
             SentimentSignal(
                 reasoning="test",
                 raw_score=0.0,
-                adjusted_score=1.5,   # > 1.0
+                adjusted_score=1.5,  # > 1.0
                 bot_risk="low",
                 source_breakdown={},
                 narrative_themes=[],
@@ -191,6 +205,7 @@ class TestSentimentSignal:
 class TestFinalReport:
     def test_valid_report(self):
         from backend.core.data_models import FinalReport
+
         report = FinalReport(
             ticker="AAPL",
             verdict="buy",
@@ -209,10 +224,11 @@ class TestFinalReport:
 
     def test_invalid_verdict_raises(self):
         from backend.core.data_models import FinalReport
+
         with pytest.raises(ValidationError):
             FinalReport(
                 ticker="AAPL",
-                verdict="maybe",   # not a valid Literal
+                verdict="maybe",  # not a valid Literal
                 conviction="medium",
                 narrative="",
                 bull_case=[],
@@ -225,6 +241,7 @@ class TestFinalReport:
     def test_model_dump_json_is_valid(self):
         import json
         from backend.core.data_models import FinalReport
+
         report = FinalReport(
             ticker="AAPL",
             verdict="hold",

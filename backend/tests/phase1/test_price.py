@@ -22,15 +22,15 @@ class TestGetOhlcv:
 
     def test_has_required_keys(self, aapl_ohlcv):
         required = {"dates", "open", "high", "low", "close", "volume", "fetched_at"}
-        assert required.issubset(aapl_ohlcv.keys()), (
-            f"Missing keys: {required - aapl_ohlcv.keys()}"
-        )
+        assert required.issubset(
+            aapl_ohlcv.keys()
+        ), f"Missing keys: {required - aapl_ohlcv.keys()}"
 
     def test_has_sufficient_rows(self, aapl_ohlcv):
         # 1 year daily = ~252 trading days; allow some tolerance
-        assert len(aapl_ohlcv["close"]) >= 200, (
-            f"Expected ≥200 price rows, got {len(aapl_ohlcv['close'])}"
-        )
+        assert (
+            len(aapl_ohlcv["close"]) >= 200
+        ), f"Expected ≥200 price rows, got {len(aapl_ohlcv['close'])}"
 
     def test_no_all_none_prices(self, aapl_ohlcv):
         closes = [c for c in aapl_ohlcv["close"] if c is not None]
@@ -61,13 +61,18 @@ class TestGetFinancials:
     def test_has_expected_financial_keys(self, aapl_financials):
         # Not all may be present (yfinance gaps), but the keys should exist
         expected_keys = {
-            "revenue", "gross_profit", "net_income",
-            "total_debt", "total_equity", "free_cash_flow",
-            "market_cap", "fetched_at"
+            "revenue",
+            "gross_profit",
+            "net_income",
+            "total_debt",
+            "total_equity",
+            "free_cash_flow",
+            "market_cap",
+            "fetched_at",
         }
-        assert expected_keys.issubset(aapl_financials.keys()), (
-            f"Missing keys: {expected_keys - aapl_financials.keys()}"
-        )
+        assert expected_keys.issubset(
+            aapl_financials.keys()
+        ), f"Missing keys: {expected_keys - aapl_financials.keys()}"
 
     def test_market_cap_is_positive(self, aapl_financials):
         mc = aapl_financials.get("market_cap")
@@ -93,17 +98,25 @@ class TestGetCompanyInfo:
 
     def test_has_required_keys(self, aapl_company_info):
         required = {"ticker", "sector", "industry", "market_cap", "fetched_at"}
-        assert required.issubset(aapl_company_info.keys()), (
-            f"Missing keys: {required - aapl_company_info.keys()}"
-        )
+        assert required.issubset(
+            aapl_company_info.keys()
+        ), f"Missing keys: {required - aapl_company_info.keys()}"
 
     def test_sector_is_known_value(self, aapl_company_info):
         known_sectors = {
-            "Technology", "Healthcare", "Financials", "Consumer Discretionary",
-            "Consumer Staples", "Energy", "Industrials", "Materials",
-            "Real Estate", "Utilities", "Communication Services",
+            "Technology",
+            "Healthcare",
+            "Financials",
+            "Consumer Discretionary",
+            "Consumer Staples",
+            "Energy",
+            "Industrials",
+            "Materials",
+            "Real Estate",
+            "Utilities",
+            "Communication Services",
         }
         sector = aapl_company_info.get("sector", "")
-        assert sector in known_sectors, (
-            f"Unexpected sector '{sector}' — not in known sector list"
-        )
+        assert (
+            sector in known_sectors
+        ), f"Unexpected sector '{sector}' — not in known sector list"

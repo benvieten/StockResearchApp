@@ -14,16 +14,29 @@ Test a single agent: `python -m backend.agents.{name} AAPL`
 
 ---
 
-## Current Status (2026-04-03)
+## Current Status (2026-04-05)
 
-Pipeline is fully built and working end-to-end.
+Pipeline is fully built and working end-to-end. All known bugs fixed and validated.
 
-**Built:** 6-agent LangGraph pipeline · market regime detection · regime-aware weights · trader profile · LLM signal caching (all 5 specialist agents) · analyst price targets + short interest + Fear & Greed in synthesis/sentiment · Piotroski F-Score + accruals in fundamental · backtest prediction store · stock screener (Reddit + yfinance + Yahoo trending) · watchlist endpoint · beginner UI
+**Built:** 6-agent LangGraph pipeline · market regime detection · regime-aware weights · trader profile · LLM signal caching (all 5 specialist agents + synthesis) · analyst price targets + short interest + Fear & Greed in synthesis/sentiment · Piotroski F-Score + accruals in fundamental · backtest prediction store · stock screener (Reddit + yfinance + Yahoo trending) · watchlist endpoint · screener/watchlist UI · beginner UI
+
+**Recent fixes (2026-04-05):**
+- yfinance HTTP 401 crumb racing — `_yf_sem = asyncio.Semaphore(1)` in `price.py`, shared by `regime.py`
+- Synthesis `NoneType.__format__` crash — `recommendation_mean` None-guarded inline
+- Synthesis max_tokens 2048 → 1536 — 1024 caused JSON truncation → retry cascade
+- Synthesis caching keyed by trader profile (`signal_synthesis_{risk}_{horizon}_{goal}_{experience}`)
+- Ollama string coercion — `"N/A"` / `"(not available)"` strings → `None` before Pydantic validation
+- Technical agent `_f()` helper — None-safe formatting for EMA 200 and other long-window indicators
+- Sentiment `asyncio.gather` uses `return_exceptions=True` — fear_greed/reddit failures no longer kill the agent
+- Sector model switched to Haiku (90% cost reduction)
+- Synthesis prompt: reasoning fields trimmed to 300 chars before LLM call
 
 **Pending:**
-1. Backtest UI — `/backtest/{ticker}` endpoint + inline track record widget
-2. Local model integration — Ollama (RTX 3060: Qwen2.5-14B; M4 Pro: Qwen2.5-32B+) for Haiku agents
-3. SQLite migration — when screener + backtest data needs cross-querying
+1. Token usage logging — track per-run API cost
+2. Backtest UI — `/backtest/{ticker}` endpoint + inline track record widget
+3. Regime unit tests — `classify_regime()` has no test coverage
+4. Local model integration — Ollama (RTX 3060: Qwen2.5-14B; M4 Pro: Qwen2.5-32B+) for Haiku agents
+5. SQLite migration — when screener + backtest data needs cross-querying
 
 ---
 
@@ -52,12 +65,17 @@ Pipeline is fully built and working end-to-end.
 - **Agent failures**: return `[{"agent": name, "signal": None}]` not `[]`
 - **Reddit**: requires `User-Agent` + `Accept` + `Accept-Language` headers or gets 403
 - **Schema version**: bump `cache.schema_version` in `config.yaml` when data shape changes
+- **yfinance concurrency**: all yfinance calls (including `regime.py`) must use `_yf_sem` from `price.py` — concurrent sessions race for crumb → HTTP 401
+- **Synthesis max_tokens**: keep at ≥1536 — JSON output exceeds 1024 → truncation → no tool_use block → 4 retries × Sonnet cost
+- **Ollama string output**: Ollama may echo prompt text (`"N/A"`, `"(not available)"`) as metric values — always coerce `str → None` before Pydantic validation
+- **Synthesis cache key**: `signal_synthesis_{risk}_{horizon}_{goal}_{experience}` — each trader profile gets its own cache entry
+- **Technical None indicators**: newly-listed tickers have <200 bars → EMA 200 = None — use `_f()` helper, never bare `:.Xf` format
 
 ---
 
 ## Key Config
 
-- Models: Haiku → fundamental, technical, quant · Sonnet → sector, sentiment, synthesis
+- Models: Haiku → fundamental, technical, quant, sector · Sonnet → sentiment, synthesis
 - Cache: `./cache/{ticker}_{source}_{YYYY-MM-DD}_v{schema_version}.json` (schema_version=2)
 - Signal cache: `{ticker}_signal_{agent}` — busts daily
 - Synthesis verdicts: ≥0.75 strong_buy · ≥0.60 buy · ≥0.40 hold · ≥0.25 sell · <0.25 strong_sell

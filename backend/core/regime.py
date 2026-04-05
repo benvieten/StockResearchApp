@@ -35,13 +35,13 @@ log = structlog.get_logger()
 
 # ── Thresholds (tunable without code changes via config if desired) ─────────────
 
-_VIX_LOW = 18.0      # below → low fear, consistent with bull
-_VIX_HIGH = 28.0     # above → elevated fear, consistent with bear / stress
+_VIX_LOW = 18.0  # below → low fear, consistent with bull
+_VIX_HIGH = 28.0  # above → elevated fear, consistent with bear / stress
 
 _ADX_TRENDING = 25.0  # above → market is trending (strong trend)
-_ADX_WEAK = 15.0      # below → directionless / ranging
+_ADX_WEAK = 15.0  # below → directionless / ranging
 
-_EMA_SLOPE_BULL = 0.0003   # annualised daily slope threshold for "rising EMA200"
+_EMA_SLOPE_BULL = 0.0003  # annualised daily slope threshold for "rising EMA200"
 _EMA_SLOPE_BEAR = -0.0003  # below → "falling EMA200"
 
 
@@ -49,8 +49,8 @@ _EMA_SLOPE_BEAR = -0.0003  # below → "falling EMA200"
 
 
 class RegimeSignal(BaseModel):
-    regime: str           # "bull" | "bear" | "transitional"
-    confidence: float     # 0.0–1.0; how many signals agree
+    regime: str  # "bull" | "bear" | "transitional"
+    confidence: float  # 0.0–1.0; how many signals agree
     vix: float | None
     adx: float | None
     ema200_slope: float | None  # annualised daily EMA-200 slope on SPY
@@ -58,7 +58,7 @@ class RegimeSignal(BaseModel):
     model_source: str = "threshold"
     # Placeholder for Phase 2 HMM — always None in Phase 1
     regime_probs: dict[str, float] | None = None
-    as_of: str = ""      # ISO date string
+    as_of: str = ""  # ISO date string
 
 
 # ── Data fetching ──────────────────────────────────────────────────────────────
@@ -66,14 +66,15 @@ class RegimeSignal(BaseModel):
 
 async def _fetch_spy_vix() -> tuple[pd.DataFrame, pd.DataFrame]:
     """Fetch 1 year of daily SPY and VIX data via yfinance (sync wrapped)."""
-    loop = asyncio.get_event_loop()
+    from backend.data.price import _yf_sem
 
     def _download() -> tuple[pd.DataFrame, pd.DataFrame]:
         spy = yf.download("SPY", period="1y", auto_adjust=True, progress=False)
         vix = yf.download("^VIX", period="1y", auto_adjust=True, progress=False)
         return spy, vix
 
-    spy_df, vix_df = await loop.run_in_executor(None, _download)
+    async with _yf_sem:
+        spy_df, vix_df = await asyncio.to_thread(_download)
     return spy_df, vix_df
 
 
@@ -90,6 +91,7 @@ def _compute_regime_indicators(
     Returns a dict with keys: vix, adx, ema200_slope, spy_vs_ema200.
     Any value that cannot be computed is None.
     """
+
     def _flatten(df: pd.DataFrame) -> pd.DataFrame:
         """Drop MultiIndex ticker level that yfinance 1.2 adds to single-ticker downloads."""
         if isinstance(df.columns, pd.MultiIndex):
@@ -179,11 +181,11 @@ def classify_regime(indicators: dict[str, float | None]) -> tuple[str, float]:
     # ── VIX vote ──────────────────────────────────────────────────────────────
     if vix is not None:
         if vix < _VIX_LOW:
-            votes.append(1)   # low fear → bull
+            votes.append(1)  # low fear → bull
         elif vix > _VIX_HIGH:
             votes.append(-1)  # elevated fear → bear
         else:
-            votes.append(0)   # neutral zone
+            votes.append(0)  # neutral zone
 
     # ── EMA200 slope vote ─────────────────────────────────────────────────────
     if slope is not None:
@@ -196,9 +198,9 @@ def classify_regime(indicators: dict[str, float | None]) -> tuple[str, float]:
 
     # ── Price vs EMA200 vote ──────────────────────────────────────────────────
     if vs_ema is not None:
-        if vs_ema > 0.02:       # SPY > 2% above EMA200 → bullish structure
+        if vs_ema > 0.02:  # SPY > 2% above EMA200 → bullish structure
             votes.append(1)
-        elif vs_ema < -0.02:    # SPY > 2% below EMA200 → bearish structure
+        elif vs_ema < -0.02:  # SPY > 2% below EMA200 → bearish structure
             votes.append(-1)
         else:
             votes.append(0)
@@ -293,6 +295,7 @@ async def get_regime() -> RegimeSignal:
 
 
 if __name__ == "__main__":
+
     async def main() -> None:
         signal = await get_regime()
         print(signal.model_dump_json(indent=2))

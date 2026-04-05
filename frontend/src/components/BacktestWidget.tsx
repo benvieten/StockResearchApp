@@ -25,7 +25,7 @@ export function BacktestWidget({ ticker }: BacktestWidgetProps) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`http://localhost:8000/backtest/${ticker}`)
+    fetch(`/api/backtest/${ticker}`)
       .then(r => r.json())
       .then(data => setPredictions(data.predictions ?? []))
       .catch(() => setPredictions([]))

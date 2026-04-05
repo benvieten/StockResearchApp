@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.config import SynthesisConfig, get_config
+from backend.data._cache import load_cache, save_cache
 from backend.core.data_models import (
     AnalystData,
     FinalReport,
@@ -87,14 +88,18 @@ def normalise_signals(
         sector_score = 0.5
 
     # Sentiment: remap [-1, 1] → [0, 1]
-    sentiment_score = (sentiment.adjusted_score + 1.0) / 2.0 if sentiment is not None else 0.5
+    sentiment_score = (
+        (sentiment.adjusted_score + 1.0) / 2.0 if sentiment is not None else 0.5
+    )
 
     # Analyst consensus: primary = upside to mean target (capped ±50%)
     # Fallback = recommendation_mean (1=strong buy → 1.0, 5=strong sell → 0.0)
     if analyst is not None and analyst.upside_to_mean is not None:
+        if abs(analyst.upside_to_mean) > 1.0:
+            log.warning("analyst_upside_extreme", upside=analyst.upside_to_mean)
         analyst_score = max(0.0, min(1.0, analyst.upside_to_mean + 0.5))
     elif analyst is not None and analyst.recommendation_mean is not None:
-        analyst_score = (5.0 - analyst.recommendation_mean) / 4.0
+        analyst_score = max(0.0, min(1.0, (5.0 - analyst.recommendation_mean) / 4.0))
     else:
         analyst_score = 0.5
 
@@ -108,7 +113,9 @@ def normalise_signals(
     }
 
 
-def compute_composite(signal_scores: dict[str, float], weights: dict[str, float]) -> float:
+def compute_composite(
+    signal_scores: dict[str, float], weights: dict[str, float]
+) -> float:
     """Weighted average of signal scores. Missing weights default to 0."""
     total_weight = 0.0
     weighted_sum = 0.0
@@ -121,7 +128,9 @@ def compute_composite(signal_scores: dict[str, float], weights: dict[str, float]
     return weighted_sum / total_weight
 
 
-def apply_profile_adjustments(weights: dict[str, float], profile: TraderProfile) -> dict[str, float]:
+def apply_profile_adjustments(
+    weights: dict[str, float], profile: TraderProfile
+) -> dict[str, float]:
     """
     Apply trader-profile multipliers on top of the regime-selected weights,
     then renormalise to sum to 1.0.
@@ -135,38 +144,38 @@ def apply_profile_adjustments(weights: dict[str, float], profile: TraderProfile)
 
     # ── Risk tolerance ────────────────────────────────────────────────────────
     if profile.risk_tolerance == "conservative":
-        w["fundamental"] *= 1.25   # trust quality metrics more
-        w["technical"]   *= 0.80   # reduce reliance on momentum signals
-        w["sentiment"]   *= 0.65   # crowd sentiment is noise for conservative traders
+        w["fundamental"] *= 1.25  # trust quality metrics more
+        w["technical"] *= 0.80  # reduce reliance on momentum signals
+        w["sentiment"] *= 0.65  # crowd sentiment is noise for conservative traders
     elif profile.risk_tolerance == "aggressive":
-        w["technical"]   *= 1.25   # momentum and timing matter more
-        w["sentiment"]   *= 1.20   # crowd flow is an edge for aggressive traders
-        w["fundamental"] *= 0.85   # willing to accept higher valuation risk
+        w["technical"] *= 1.25  # momentum and timing matter more
+        w["sentiment"] *= 1.20  # crowd flow is an edge for aggressive traders
+        w["fundamental"] *= 0.85  # willing to accept higher valuation risk
 
     # ── Time horizon ──────────────────────────────────────────────────────────
     if profile.time_horizon == "long_term":
-        w["fundamental"] *= 1.20   # earnings quality compounds over time
-        w["technical"]   *= 0.70   # short-term chart noise is irrelevant
-        w["sentiment"]   *= 0.70   # Reddit sentiment doesn't matter in 3 years
+        w["fundamental"] *= 1.20  # earnings quality compounds over time
+        w["technical"] *= 0.70  # short-term chart noise is irrelevant
+        w["sentiment"] *= 0.70  # Reddit sentiment doesn't matter in 3 years
     elif profile.time_horizon == "short_term":
-        w["technical"]   *= 1.35   # chart setups drive near-term price action
-        w["sentiment"]   *= 1.25   # retail flow matters over days to weeks
-        w["fundamental"] *= 0.65   # fundamentals take time to be priced in
+        w["technical"] *= 1.35  # chart setups drive near-term price action
+        w["sentiment"] *= 1.25  # retail flow matters over days to weeks
+        w["fundamental"] *= 0.65  # fundamentals take time to be priced in
 
     # ── Goal ──────────────────────────────────────────────────────────────────
     if profile.goal == "income":
-        w["fundamental"] *= 1.15   # dividend sustainability lives in fundamentals
-        w["sentiment"]   *= 0.80
+        w["fundamental"] *= 1.15  # dividend sustainability lives in fundamentals
+        w["sentiment"] *= 0.80
     elif profile.goal == "preservation":
-        w["fundamental"] *= 1.30   # balance-sheet strength is paramount
-        w["sector"]      *= 1.10   # defensive sector positioning matters
-        w["technical"]   *= 0.70
-        w["sentiment"]   *= 0.55
+        w["fundamental"] *= 1.30  # balance-sheet strength is paramount
+        w["sector"] *= 1.10  # defensive sector positioning matters
+        w["technical"] *= 0.70
+        w["sentiment"] *= 0.55
     elif profile.goal == "speculation":
-        w["technical"]   *= 1.25
-        w["sentiment"]   *= 1.35   # hype and narrative drive speculative moves
-        w["quant"]       *= 1.15   # momentum factor is key for spec plays
-        w["fundamental"] *= 0.60   # valuation rarely matters for speculative names
+        w["technical"] *= 1.25
+        w["sentiment"] *= 1.35  # hype and narrative drive speculative moves
+        w["quant"] *= 1.15  # momentum factor is key for spec plays
+        w["fundamental"] *= 0.60  # valuation rarely matters for speculative names
 
     # ── Renormalise ───────────────────────────────────────────────────────────
     total = sum(w.values())
@@ -175,7 +184,11 @@ def apply_profile_adjustments(weights: dict[str, float], profile: TraderProfile)
     return {k: v / total for k, v in w.items()}
 
 
-def select_weights(regime: RegimeSignal, cfg_weights: dict[str, float], regime_weights: dict[str, dict[str, float]]) -> dict[str, float]:
+def select_weights(
+    regime: RegimeSignal,
+    cfg_weights: dict[str, float],
+    regime_weights: dict[str, dict[str, float]],
+) -> dict[str, float]:
     """
     Return the appropriate signal weight dict for the current market regime.
 
@@ -271,51 +284,87 @@ async def _call_llm(
     def _pct(v: float) -> str:
         return f"{v * 100:.1f}%"
 
-    fundamental_flags = ", ".join(fundamental.key_flags[:4]) if fundamental else "unavailable"
-    peer_top = sorted(sector.peer_comparison.items(), key=lambda x: x[1], reverse=True)[:3] if sector else []
+    fundamental_flags = (
+        ", ".join(fundamental.key_flags[:4]) if fundamental else "unavailable"
+    )
+    peer_top = (
+        sorted(sector.peer_comparison.items(), key=lambda x: x[1], reverse=True)[:3]
+        if sector
+        else []
+    )
     peer_str = ", ".join(f"{t}: {_pct(r)}" for t, r in peer_top) or "none"
 
+    fund_reasoning = (
+        (fundamental.reasoning[:300] + "…")
+        if fundamental and len(fundamental.reasoning) > 300
+        else (fundamental.reasoning if fundamental else "")
+    )
     fund_text = (
-        f"  Verdict: {fundamental.valuation_verdict} | Quality: {fundamental.quality_score:.2f}\n"
-        f"  Key flags: {fundamental_flags}\n"
-        f"  Reasoning: {fundamental.reasoning}"
-    ) if fundamental else "  DATA UNAVAILABLE — signal failed"
+        (
+            f"  Verdict: {fundamental.valuation_verdict} | Quality: {fundamental.quality_score:.2f}\n"
+            f"  Key flags: {fundamental_flags}\n"
+            f"  Reasoning: {fund_reasoning}"
+        )
+        if fundamental
+        else "  DATA UNAVAILABLE — signal failed"
+    )
 
     tech_text = (
-        f"  Direction: {technical.direction} | Confidence: {technical.confidence:.2f}\n"
-        f"  Summary: {technical.indicator_summary}"
-    ) if technical else "  DATA UNAVAILABLE — signal failed"
+        (
+            f"  Direction: {technical.direction} | Confidence: {technical.confidence:.2f}\n"
+            f"  Summary: {technical.indicator_summary}"
+        )
+        if technical
+        else "  DATA UNAVAILABLE — signal failed"
+    )
 
     def _fmt(v: float | None, decimals: int = 2) -> str:
         return f"{v:.{decimals}f}" if v is not None else "n/a"
 
     quant_text = (
-        f"  Composite: {quant.composite_score:.2f}\n"
-        f"  Factors: momentum={_fmt(quant.factor_breakdown.get('momentum'))}, "
-        f"quality={_fmt(quant.factor_breakdown.get('quality'))}, "
-        f"value={_fmt(quant.factor_breakdown.get('value'))}, "
-        f"low_vol={_fmt(quant.factor_breakdown.get('low_vol'))}\n"
-        f"  Statistical: return_zscore={_fmt(quant.factor_breakdown.get('return_zscore'))} "
-        f"(>2 extended, <-2 oversold), "
-        f"volume_ratio={_fmt(quant.factor_breakdown.get('volume_ratio'))} "
-        f"(1.0=normal), "
-        f"bb_pct={_fmt(quant.factor_breakdown.get('bb_percentile'))} "
-        f"(0=lower band, 1=upper), "
-        f"rsi_pct={_fmt(quant.factor_breakdown.get('rsi_percentile'))} "
-        f"(percentile rank in 1y history)"
-    ) if quant else "  DATA UNAVAILABLE — signal failed"
+        (
+            f"  Composite: {quant.composite_score:.2f}\n"
+            f"  Factors: momentum={_fmt(quant.factor_breakdown.get('momentum'))}, "
+            f"quality={_fmt(quant.factor_breakdown.get('quality'))}, "
+            f"value={_fmt(quant.factor_breakdown.get('value'))}, "
+            f"low_vol={_fmt(quant.factor_breakdown.get('low_vol'))}\n"
+            f"  Statistical: return_zscore={_fmt(quant.factor_breakdown.get('return_zscore'))} "
+            f"(>2 extended, <-2 oversold), "
+            f"volume_ratio={_fmt(quant.factor_breakdown.get('volume_ratio'))} "
+            f"(1.0=normal), "
+            f"bb_pct={_fmt(quant.factor_breakdown.get('bb_percentile'))} "
+            f"(0=lower band, 1=upper), "
+            f"rsi_pct={_fmt(quant.factor_breakdown.get('rsi_percentile'))} "
+            f"(percentile rank in 1y history)"
+        )
+        if quant
+        else "  DATA UNAVAILABLE — signal failed"
+    )
 
     sector_text = (
-        f"  Sector: {sector.sector} | ETF: {sector.sector_etf}\n"
-        f"  Relative performance: {sector.relative_performance}\n"
-        f"  Top peers: {peer_str}"
-    ) if sector else "  DATA UNAVAILABLE — signal failed"
+        (
+            f"  Sector: {sector.sector} | ETF: {sector.sector_etf}\n"
+            f"  Relative performance: {sector.relative_performance}\n"
+            f"  Top peers: {peer_str}"
+        )
+        if sector
+        else "  DATA UNAVAILABLE — signal failed"
+    )
 
+    sent_reasoning = (
+        (sentiment.reasoning[:300] + "…")
+        if sentiment and len(sentiment.reasoning) > 300
+        else (sentiment.reasoning if sentiment else "")
+    )
     sent_text = (
-        f"  Raw: {sentiment.raw_score:.2f} → Adjusted: {sentiment.adjusted_score:.2f} (bot risk: {sentiment.bot_risk})\n"
-        f"  Themes: {', '.join(sentiment.narrative_themes[:4])}\n"
-        f"  Reasoning: {sentiment.reasoning}"
-    ) if sentiment else "  DATA UNAVAILABLE — signal failed"
+        (
+            f"  Raw: {sentiment.raw_score:.2f} → Adjusted: {sentiment.adjusted_score:.2f} (bot risk: {sentiment.bot_risk})\n"
+            f"  Themes: {', '.join(sentiment.narrative_themes[:4])}\n"
+            f"  Reasoning: {sent_reasoning}"
+        )
+        if sentiment
+        else "  DATA UNAVAILABLE — signal failed"
+    )
 
     def _price(v: float | None) -> str:
         return f"${v:.2f}" if v is not None else "n/a"
@@ -330,7 +379,7 @@ async def _call_llm(
             f"high={_price(analyst.target_high)}, low={_price(analyst.target_low)}\n"
             f"  Upside to mean target: {_pct_upside(analyst.upside_to_mean)}\n"
             f"  Consensus: {analyst.recommendation_key or 'n/a'} "
-            f"(mean={analyst.recommendation_mean:.1f}/5.0 — 1=strong buy, 5=strong sell)\n"
+            f"(mean={f'{analyst.recommendation_mean:.1f}' if analyst.recommendation_mean is not None else 'n/a'}/5.0 — 1=strong buy, 5=strong sell)\n"
             f"  Analyst count: {analyst.num_analysts or 'n/a'}"
         )
     else:
@@ -449,8 +498,14 @@ Focus your narrative on the *why*, not just restating the scores."""
 
     response = await client.messages.create(
         model=model,
-        max_tokens=2048,
-        tools=[{"name": "submit", "description": "Submit the final report", "input_schema": schema}],
+        max_tokens=1536,
+        tools=[
+            {
+                "name": "submit",
+                "description": "Submit the final report",
+                "input_schema": schema,
+            }
+        ],
         tool_choice={"type": "tool", "name": "submit"},
         messages=[{"role": "user", "content": prompt}],
     )
@@ -505,27 +560,56 @@ async def run(
         weights={k: round(v, 3) for k, v in weights.items()},
     )
 
-    signal_scores = normalise_signals(fundamental, technical, quant, sector, sentiment, analyst_data)
+    signal_scores = normalise_signals(
+        fundamental, technical, quant, sector, sentiment, analyst_data
+    )
     composite = compute_composite(signal_scores, weights)
     full_consensus = check_full_consensus(signal_scores)
     verdict = score_to_verdict(composite, cfg.synthesis)
     conviction = score_to_conviction(composite, full_consensus=full_consensus)
 
     if full_consensus:
-        log.info("synthesis_full_consensus_detected", ticker=ticker,
-                 scores={k: round(v, 3) for k, v in signal_scores.items()},
-                 conviction_capped=conviction)
+        log.info(
+            "synthesis_full_consensus_detected",
+            ticker=ticker,
+            scores={k: round(v, 3) for k, v in signal_scores.items()},
+            conviction_capped=conviction,
+        )
+
+    # Cache key encodes profile so different profiles get distinct narratives
+    profile_key = (
+        f"{trader_profile.risk_tolerance}_{trader_profile.time_horizon}"
+        f"_{trader_profile.goal}_{trader_profile.experience}"
+        if trader_profile
+        else "default"
+    )
+    cache_key = f"signal_synthesis_{profile_key}"
+    cached = load_cache(ticker, cache_key)
+    if cached is not None:
+        log.info("synthesis_agent_cache_hit", ticker=ticker, profile_key=profile_key)
+        return FinalReport.model_validate(cached)
 
     report = await _call_llm(
-        model, ticker, fundamental, technical, quant, sector, sentiment,
-        signal_scores, verdict, conviction,
+        model,
+        ticker,
+        fundamental,
+        technical,
+        quant,
+        sector,
+        sentiment,
+        signal_scores,
+        verdict,
+        conviction,
         trader_profile=trader_profile,
         full_consensus=full_consensus,
         analyst=analyst_data,
     )
+    save_cache(ticker, cache_key, report.model_dump())
     log.info(
         "synthesis_agent_done",
-        ticker=ticker, verdict=verdict, conviction=conviction,
+        ticker=ticker,
+        verdict=verdict,
+        conviction=conviction,
         regime=regime.regime,
         profile_risk=trader_profile.risk_tolerance if trader_profile else None,
     )

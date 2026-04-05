@@ -68,7 +68,11 @@ class ScreenerConfig(BaseModel):
     top_n: int = 15
     min_market_cap_millions: int = 500
     min_avg_volume: int = 500_000
-    screener_queries: list[str] = ["most_actives", "day_gainers", "undervalued_large_caps"]
+    screener_queries: list[str] = [
+        "most_actives",
+        "day_gainers",
+        "undervalued_large_caps",
+    ]
 
 
 class WatchlistConfig(BaseModel):

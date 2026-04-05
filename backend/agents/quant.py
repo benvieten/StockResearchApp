@@ -111,7 +111,7 @@ def compute_low_vol_score(df: pd.DataFrame, window: int = 90) -> float:
     returns = df["Close"].pct_change().dropna()
     sample = returns.iloc[-window:] if len(returns) >= window else returns
     daily_vol = float(sample.std())
-    annual_vol = daily_vol * (252 ** 0.5)
+    annual_vol = daily_vol * (252**0.5)
 
     vol_max = 0.50
     score = max(0.0, min(1.0, 1.0 - annual_vol / vol_max))
@@ -171,7 +171,7 @@ def compute_volume_ratio(df: pd.DataFrame, window: int = 20) -> float | None:
     vol = df["Volume"].dropna()
     if len(vol) < window + 1:
         return None
-    avg = float(vol.iloc[-(window + 1):-1].mean())
+    avg = float(vol.iloc[-(window + 1) : -1].mean())
     today = float(vol.iloc[-1])
     if avg == 0:
         return None
@@ -202,7 +202,9 @@ def compute_bb_percentile(df: pd.DataFrame, window: int = 20) -> float | None:
     return round(max(0.0, min(1.0, pct_b)), 4)
 
 
-def compute_rsi_percentile(df: pd.DataFrame, rsi_window: int = 14, lookback: int = 252) -> float | None:
+def compute_rsi_percentile(
+    df: pd.DataFrame, rsi_window: int = 14, lookback: int = 252
+) -> float | None:
     """
     RSI percentile rank — where today's RSI(14) sits within its own 252-day history.
 
@@ -287,9 +289,13 @@ async def run(ticker: str) -> QuantSignal:
     ticker_returns = _compute_period_returns(df, cfg.quant.momentum_windows_months)
     spy_returns = _compute_period_returns(spy_df, cfg.quant.momentum_windows_months)
 
-    momentum = compute_momentum_score(ticker_returns, spy_returns) if ticker_returns else None
+    momentum = (
+        compute_momentum_score(ticker_returns, spy_returns) if ticker_returns else None
+    )
     quality = compute_quality_score(ratios.get("roe"), ratios.get("debt_to_equity"))
-    value = compute_value_score(ratios.get("pe"), cfg.quant.earnings_yield_min, cfg.quant.earnings_yield_max)
+    value = compute_value_score(
+        ratios.get("pe"), cfg.quant.earnings_yield_min, cfg.quant.earnings_yield_max
+    )
     low_vol = compute_low_vol_score(df, cfg.quant.volatility_window_days)
     composite = compute_composite_score(momentum, quality, value, low_vol)
 
@@ -315,8 +321,13 @@ async def run(ticker: str) -> QuantSignal:
         data_quality=data_quality,
     )
     save_cache(ticker, "signal_quant", signal.model_dump())
-    log.info("quant_agent_done", ticker=ticker, composite=composite,
-             return_zscore=return_zscore, volume_ratio=volume_ratio)
+    log.info(
+        "quant_agent_done",
+        ticker=ticker,
+        composite=composite,
+        return_zscore=return_zscore,
+        volume_ratio=volume_ratio,
+    )
     return signal
 
 

@@ -33,3 +33,6 @@ env/
 
 # Ruff / Black
 .ruff_cache/
+
+# Docker
+.dockerignore

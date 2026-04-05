@@ -24,7 +24,9 @@ class ModelRouter:
             return self.config.ollama.models[agent_name]
         if agent_name in self.config.anthropic.models:
             return self.config.anthropic.models[agent_name]
-        all_agents = list(self.config.ollama.models) + list(self.config.anthropic.models)
+        all_agents = list(self.config.ollama.models) + list(
+            self.config.anthropic.models
+        )
         raise KeyError(
             f"No model configured for agent '{agent_name}'. "
             f"Available agents: {all_agents}"

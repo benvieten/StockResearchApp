@@ -110,7 +110,9 @@ def check_outcomes(min_days_elapsed: int = 25) -> list[dict]:
                 try:
                     t = yf.Ticker(ticker)
                     info = t.info or {}
-                    current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+                    current_price = info.get("currentPrice") or info.get(
+                        "regularMarketPrice"
+                    )
                 except Exception:
                     current_price = None
 
@@ -120,14 +122,16 @@ def check_outcomes(min_days_elapsed: int = 25) -> list[dict]:
                     else None
                 )
 
-                outcomes.append({
-                    **rec,
-                    "elapsed_days": elapsed,
-                    "target_days": target_days,
-                    "current_price": current_price,
-                    "actual_return": actual_return,
-                    "outcome_checked_at": now.isoformat(),
-                })
+                outcomes.append(
+                    {
+                        **rec,
+                        "elapsed_days": elapsed,
+                        "target_days": target_days,
+                        "current_price": current_price,
+                        "actual_return": actual_return,
+                        "outcome_checked_at": now.isoformat(),
+                    }
+                )
             except Exception as exc:
                 log.warning("backtest_outcome_parse_failed", error=str(exc))
 
@@ -169,7 +173,9 @@ def get_ticker_history(ticker: str) -> list[dict]:
                     entry_price = rec["price_at_prediction"]
                     try:
                         info = yf.Ticker(ticker).info or {}
-                        current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+                        current_price = info.get("currentPrice") or info.get(
+                            "regularMarketPrice"
+                        )
                     except Exception:
                         current_price = None
 
@@ -178,22 +184,28 @@ def get_ticker_history(ticker: str) -> list[dict]:
                         if current_price and entry_price and entry_price > 0
                         else None
                     )
-                    records.append({
-                        **rec,
-                        "status": "matured",
-                        "elapsed_days": elapsed,
-                        "target_days": target_days,
-                        "current_price": current_price,
-                        "actual_return": actual_return,
-                    })
+                    records.append(
+                        {
+                            **rec,
+                            "status": "matured",
+                            "elapsed_days": elapsed,
+                            "target_days": target_days,
+                            "current_price": current_price,
+                            "actual_return": actual_return,
+                        }
+                    )
                 else:
-                    records.append({
-                        **rec,
-                        "status": "pending",
-                        "elapsed_days": elapsed,
-                        "target_days": target_days,
-                    })
+                    records.append(
+                        {
+                            **rec,
+                            "status": "pending",
+                            "elapsed_days": elapsed,
+                            "target_days": target_days,
+                        }
+                    )
             except Exception as exc:
-                log.warning("backtest_history_parse_failed", ticker=ticker, error=str(exc))
+                log.warning(
+                    "backtest_history_parse_failed", ticker=ticker, error=str(exc)
+                )
 
     return sorted(records, key=lambda r: r.get("predicted_at", ""), reverse=True)

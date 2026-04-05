@@ -23,6 +23,11 @@ from backend.data._cache import load_cache, save_cache
 
 log = structlog.get_logger()
 
+# Serialise all yfinance network calls to prevent concurrent session/crumb races.
+# yfinance 1.x creates a new session per Ticker; concurrent sessions race to
+# fetch a crumb and invalidate each other → HTTP 401 "Invalid Crumb".
+_yf_sem = asyncio.Semaphore(1)
+
 
 # ── Public async API ───────────────────────────────────────────────────────────
 
@@ -34,7 +39,8 @@ async def get_ohlcv(ticker: str) -> dict:
         return cached
 
     log.info("fetching_ohlcv", ticker=ticker)
-    data = await asyncio.to_thread(_fetch_ohlcv, ticker)
+    async with _yf_sem:
+        data = await asyncio.to_thread(_fetch_ohlcv, ticker)
     save_cache(ticker, "ohlcv", data)
     return data
 
@@ -46,7 +52,8 @@ async def get_financials(ticker: str) -> dict:
         return cached
 
     log.info("fetching_financials", ticker=ticker)
-    data = await asyncio.to_thread(_fetch_financials, ticker)
+    async with _yf_sem:
+        data = await asyncio.to_thread(_fetch_financials, ticker)
     save_cache(ticker, "financials", data)
     return data
 
@@ -58,7 +65,8 @@ async def get_company_info(ticker: str) -> dict:
         return cached
 
     log.info("fetching_company_info", ticker=ticker)
-    data = await asyncio.to_thread(_fetch_company_info, ticker)
+    async with _yf_sem:
+        data = await asyncio.to_thread(_fetch_company_info, ticker)
     save_cache(ticker, "company_info", data)
     return data
 
@@ -70,7 +78,8 @@ async def get_short_interest(ticker: str) -> dict:
         return cached
 
     log.info("fetching_short_interest", ticker=ticker)
-    data = await asyncio.to_thread(_fetch_short_interest, ticker)
+    async with _yf_sem:
+        data = await asyncio.to_thread(_fetch_short_interest, ticker)
     save_cache(ticker, "short_interest", data)
     return data
 
@@ -82,7 +91,8 @@ async def get_analyst_data(ticker: str) -> dict:
         return cached
 
     log.info("fetching_analyst_data", ticker=ticker)
-    data = await asyncio.to_thread(_fetch_analyst_data, ticker)
+    async with _yf_sem:
+        data = await asyncio.to_thread(_fetch_analyst_data, ticker)
     save_cache(ticker, "analyst", data)
     return data
 
@@ -175,7 +185,7 @@ def _fetch_short_interest(ticker: str) -> dict:
 
     shares_short = info.get("sharesShort")
     short_float = info.get("shortPercentOfFloat")
-    short_ratio = info.get("shortRatio")          # days-to-cover
+    short_ratio = info.get("shortRatio")  # days-to-cover
     shares_outstanding = info.get("sharesOutstanding")
 
     # Compute short % of float as decimal if yfinance returns it as a fraction vs percent

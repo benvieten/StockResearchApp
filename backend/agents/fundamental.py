@@ -153,7 +153,12 @@ def compute_ratios(financials: dict) -> dict:
     # Accruals ratio: (Net Income - OCF) / Total Assets
     accruals_ratio = (
         (net_income_0 - ocf_0) / total_assets_0
-        if (net_income_0 is not None and ocf_0 is not None and total_assets_0 is not None and total_assets_0 != 0)
+        if (
+            net_income_0 is not None
+            and ocf_0 is not None
+            and total_assets_0 is not None
+            and total_assets_0 != 0
+        )
         else None
     )
     # Change in leverage (lower = better)
@@ -175,15 +180,29 @@ def compute_ratios(financials: dict) -> dict:
     # Change in shares (dilution check) — skip: not worth adding another yfinance field
     # Assemble 9 binary signals
     signals = [
-        (1 if roa_0 > 0 else 0) if roa_0 is not None else None,       # F1: positive ROA
-        (1 if ocf_ta > 0 else 0) if ocf_ta is not None else None,      # F2: positive OCF/Assets
-        (1 if delta_roa > 0 else 0) if delta_roa is not None else None, # F3: ROA improving
-        (1 if accruals_ratio < 0 else 0) if accruals_ratio is not None else None,  # F4: OCF > NI
-        (1 if delta_lev < 0 else 0) if delta_lev is not None else None, # F5: leverage falling
-        (1 if delta_cr > 0 else 0) if delta_cr is not None else None,   # F6: liquidity improving
-        None,                                                             # F7: no dilution (skipped)
-        (1 if delta_gm > 0 else 0) if delta_gm is not None else None,  # F8: gross margin improving
-        (1 if delta_at > 0 else 0) if delta_at is not None else None,  # F9: asset turnover improving
+        (1 if roa_0 > 0 else 0) if roa_0 is not None else None,  # F1: positive ROA
+        (
+            (1 if ocf_ta > 0 else 0) if ocf_ta is not None else None
+        ),  # F2: positive OCF/Assets
+        (
+            (1 if delta_roa > 0 else 0) if delta_roa is not None else None
+        ),  # F3: ROA improving
+        (
+            (1 if accruals_ratio < 0 else 0) if accruals_ratio is not None else None
+        ),  # F4: OCF > NI
+        (
+            (1 if delta_lev < 0 else 0) if delta_lev is not None else None
+        ),  # F5: leverage falling
+        (
+            (1 if delta_cr > 0 else 0) if delta_cr is not None else None
+        ),  # F6: liquidity improving
+        None,  # F7: no dilution (skipped)
+        (
+            (1 if delta_gm > 0 else 0) if delta_gm is not None else None
+        ),  # F8: gross margin improving
+        (
+            (1 if delta_at > 0 else 0) if delta_at is not None else None
+        ),  # F9: asset turnover improving
     ]
     available = [s for s in signals if s is not None]
     piotroski_score: int | None = sum(available) if len(available) >= 5 else None
@@ -241,8 +260,7 @@ Be precise. Use the numbers given — do not invent ratios."""
     # Ollama sometimes echoes "(not available)" or "N/A" as string values — coerce to None
     if "metrics" in data:
         data["metrics"] = {
-            k: (None if isinstance(v, str) else v)
-            for k, v in data["metrics"].items()
+            k: (None if isinstance(v, str) else v) for k, v in data["metrics"].items()
         }
     return FundamentalSignal.model_validate(data)
 

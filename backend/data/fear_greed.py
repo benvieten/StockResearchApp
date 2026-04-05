@@ -23,7 +23,7 @@ from backend.data._cache import load_cache, save_cache
 
 log = structlog.get_logger()
 
-_CACHE_KEY = "MARKET"   # not ticker-specific
+_CACHE_KEY = "MARKET"  # not ticker-specific
 
 
 async def get_fear_greed() -> dict:
@@ -45,9 +45,13 @@ def _fetch_fear_greed() -> dict:
 
     return {
         "score": raw.get("score"),
-        "rating": raw.get("rating"),          # "extreme fear" / "fear" / "neutral" / "greed" / "extreme greed"
+        "rating": raw.get(
+            "rating"
+        ),  # "extreme fear" / "fear" / "neutral" / "greed" / "extreme greed"
         "timestamp": raw.get("timestamp"),
-        "history": raw.get("history", {}),    # {"1w": x, "1m": x, "3m": x, "6m": x, "1y": x}
+        "history": raw.get(
+            "history", {}
+        ),  # {"1w": x, "1m": x, "3m": x, "6m": x, "1y": x}
         "indicators": raw.get("indicators", {}),
         "fetched_at": datetime.now(timezone.utc).isoformat(),
     }

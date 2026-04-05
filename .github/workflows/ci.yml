@@ -27,7 +27,7 @@ jobs:
         run: python -m ruff check backend/
 
       - name: Black
-        run: python -m black --check backend/
+        run: python -m black --check --target-version py313 backend/
 
       # ── Tests ───────────────────────────────────────────────────────────────
       # Phase 2: schema + config validation — no I/O, no API key needed

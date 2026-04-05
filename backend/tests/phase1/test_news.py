@@ -15,7 +15,9 @@ class TestNewsOutput:
         assert isinstance(aapl_news, list), "Expected a list of news items"
 
     def test_not_empty(self, aapl_news):
-        assert len(aapl_news) > 0, "News list is empty — Google News RSS may have failed"
+        assert (
+            len(aapl_news) > 0
+        ), "News list is empty — Google News RSS may have failed"
 
     def test_items_have_required_fields(self, aapl_news):
         required = {"headline", "source", "timestamp", "url"}

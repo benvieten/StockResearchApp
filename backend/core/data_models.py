@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 # ── Shared type aliases ────────────────────────────────────────────────────────
 
 DataQuality = Literal["full", "partial"]
-UnitFloat = Annotated[float, Field(ge=0.0, le=1.0)]      # [0, 1]
+UnitFloat = Annotated[float, Field(ge=0.0, le=1.0)]  # [0, 1]
 SentimentFloat = Annotated[float, Field(ge=-1.0, le=1.0)]  # [-1, 1]
 
 
@@ -54,19 +54,19 @@ class QuantSignal(BaseModel):
 
 class SectorSignal(BaseModel):
     reasoning: str
-    sector: str                    # e.g. "Technology"
+    sector: str  # e.g. "Technology"
     relative_performance: Literal["outperforming", "inline", "underperforming"]
-    sector_etf: str                # e.g. "XLK"
-    peer_comparison: dict[str, float]   # ticker → 12M return
+    sector_etf: str  # e.g. "XLK"
+    peer_comparison: dict[str, float]  # ticker → 12M return
     data_quality: DataQuality
 
 
 class SentimentSignal(BaseModel):
     reasoning: str
-    raw_score: SentimentFloat       # unweighted aggregate: -1 (bearish) to 1 (bullish)
+    raw_score: SentimentFloat  # unweighted aggregate: -1 (bearish) to 1 (bullish)
     adjusted_score: SentimentFloat  # after discounting bot-flagged content
     bot_risk: Literal["low", "medium", "high"]
-    source_breakdown: dict[str, float]   # per-source scores
+    source_breakdown: dict[str, float]  # per-source scores
     narrative_themes: list[str]
     mention_volume: int
     data_quality: DataQuality
@@ -83,6 +83,7 @@ class AnalystData(BaseModel):
     - recommendation_mean: 1.0 = strong buy, 3.0 = hold, 5.0 = strong sell
     - upside_to_mean: (target_mean - current_price) / current_price
     """
+
     current_price: float | None = None
     target_mean: float | None = None
     target_high: float | None = None
@@ -103,6 +104,7 @@ class TraderProfile(BaseModel):
     the synthesis agent, which uses it to adjust signal weights and frame the
     final narrative appropriately for this trader's goals and risk appetite.
     """
+
     risk_tolerance: Literal["conservative", "moderate", "aggressive"]
     time_horizon: Literal["short_term", "medium_term", "long_term"]
     goal: Literal["growth", "income", "preservation", "speculation"]
@@ -119,8 +121,8 @@ class FinalReport(BaseModel):
     narrative: str
     bull_case: list[str]
     bear_case: list[str]
-    conflicts: list[str]         # where agents disagree
+    conflicts: list[str]  # where agents disagree
     signal_scores: dict[str, float]  # normalized 0-1 score per agent
     recommended_horizon: Literal["short_term", "medium_term", "long_term"]
-    horizon_rationale: str       # one sentence explaining the horizon fit
+    horizon_rationale: str  # one sentence explaining the horizon fit
     generated_at: str

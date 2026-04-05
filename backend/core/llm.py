@@ -75,10 +75,16 @@ async def call_structured_llm(
 
     if backend == "ollama":
         return await _call_ollama(
-            model, prompt, tool_description, clean_schema, max_tokens,
+            model,
+            prompt,
+            tool_description,
+            clean_schema,
+            max_tokens,
             base_url=router.get_ollama_base_url(),
         )
-    return await _call_anthropic(model, prompt, tool_description, clean_schema, max_tokens)
+    return await _call_anthropic(
+        model, prompt, tool_description, clean_schema, max_tokens
+    )
 
 
 async def _call_anthropic(
@@ -92,7 +98,9 @@ async def _call_anthropic(
     response = await client.messages.create(
         model=model,
         max_tokens=max_tokens,
-        tools=[{"name": "submit", "description": tool_description, "input_schema": schema}],
+        tools=[
+            {"name": "submit", "description": tool_description, "input_schema": schema}
+        ],
         tool_choice={"type": "tool", "name": "submit"},
         messages=[{"role": "user", "content": prompt}],
     )
@@ -118,14 +126,16 @@ async def _call_ollama(
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "tools": [{
-            "type": "function",
-            "function": {
-                "name": "submit",
-                "description": tool_description,
-                "parameters": schema,
-            },
-        }],
+        "tools": [
+            {
+                "type": "function",
+                "function": {
+                    "name": "submit",
+                    "description": tool_description,
+                    "parameters": schema,
+                },
+            }
+        ],
         "tool_choice": {"type": "function", "function": {"name": "submit"}},
         "max_tokens": max_tokens,
         "stream": False,
@@ -145,7 +155,9 @@ async def _call_ollama(
 
     tool_calls = choices[0].get("message", {}).get("tool_calls", [])
     if not tool_calls:
-        raise ValueError("No tool_calls in Ollama response — model may not support tool calling")
+        raise ValueError(
+            "No tool_calls in Ollama response — model may not support tool calling"
+        )
 
     arguments = tool_calls[0]["function"]["arguments"]
     # Ollama returns arguments as a JSON string; parse it

@@ -45,8 +45,10 @@ class ResearchState(TypedDict):
     # nodes silently overwrite each other (LangGraph superstep behaviour).
     agent_signals: Annotated[list, operator.add]
     final_report: dict | None
-    regime: RegimeSignal | None          # pre-fetched once, shared by technical + synthesis
-    trader_profile: TraderProfile | None  # passed in from the request, forwarded to synthesis
+    regime: RegimeSignal | None  # pre-fetched once, shared by technical + synthesis
+    trader_profile: (
+        TraderProfile | None
+    )  # passed in from the request, forwarded to synthesis
 
 
 # ── Node functions ─────────────────────────────────────────────────────────────
@@ -58,7 +60,13 @@ async def run_fundamental(state: ResearchState) -> dict:
     writer({"type": "agent_start", "agent": "fundamental"})
     try:
         signal = await fundamental.run(ticker)
-        writer({"type": "agent_complete", "agent": "fundamental", "signal": signal.model_dump()})
+        writer(
+            {
+                "type": "agent_complete",
+                "agent": "fundamental",
+                "signal": signal.model_dump(),
+            }
+        )
         return {"agent_signals": [{"agent": "fundamental", "signal": signal}]}
     except Exception as exc:
         log.error("fundamental_agent_failed", ticker=ticker, error=str(exc))
@@ -72,7 +80,13 @@ async def run_technical(state: ResearchState) -> dict:
     writer({"type": "agent_start", "agent": "technical"})
     try:
         signal = await technical.run(ticker, regime=state.get("regime"))
-        writer({"type": "agent_complete", "agent": "technical", "signal": signal.model_dump()})
+        writer(
+            {
+                "type": "agent_complete",
+                "agent": "technical",
+                "signal": signal.model_dump(),
+            }
+        )
         return {"agent_signals": [{"agent": "technical", "signal": signal}]}
     except Exception as exc:
         log.error("technical_agent_failed", ticker=ticker, error=str(exc))
@@ -86,7 +100,9 @@ async def run_quant(state: ResearchState) -> dict:
     writer({"type": "agent_start", "agent": "quant"})
     try:
         signal = await quant.run(ticker)
-        writer({"type": "agent_complete", "agent": "quant", "signal": signal.model_dump()})
+        writer(
+            {"type": "agent_complete", "agent": "quant", "signal": signal.model_dump()}
+        )
         return {"agent_signals": [{"agent": "quant", "signal": signal}]}
     except Exception as exc:
         log.error("quant_agent_failed", ticker=ticker, error=str(exc))
@@ -100,7 +116,9 @@ async def run_sector(state: ResearchState) -> dict:
     writer({"type": "agent_start", "agent": "sector"})
     try:
         signal = await sector.run(ticker)
-        writer({"type": "agent_complete", "agent": "sector", "signal": signal.model_dump()})
+        writer(
+            {"type": "agent_complete", "agent": "sector", "signal": signal.model_dump()}
+        )
         return {"agent_signals": [{"agent": "sector", "signal": signal}]}
     except Exception as exc:
         log.error("sector_agent_failed", ticker=ticker, error=str(exc))
@@ -114,7 +132,13 @@ async def run_sentiment(state: ResearchState) -> dict:
     writer({"type": "agent_start", "agent": "sentiment"})
     try:
         signal = await sentiment.run(ticker)
-        writer({"type": "agent_complete", "agent": "sentiment", "signal": signal.model_dump()})
+        writer(
+            {
+                "type": "agent_complete",
+                "agent": "sentiment",
+                "signal": signal.model_dump(),
+            }
+        )
         return {"agent_signals": [{"agent": "sentiment", "signal": signal}]}
     except Exception as exc:
         log.error("sentiment_agent_failed", ticker=ticker, error=str(exc))
@@ -139,10 +163,15 @@ async def run_synthesis(state: ResearchState) -> dict:
 
     if not all([fund_sig, tech_sig, quant_sig, sect_sig, sent_sig]):
         missing = [
-            name for name, sig in [
-                ("fundamental", fund_sig), ("technical", tech_sig),
-                ("quant", quant_sig), ("sector", sect_sig), ("sentiment", sent_sig),
-            ] if sig is None
+            name
+            for name, sig in [
+                ("fundamental", fund_sig),
+                ("technical", tech_sig),
+                ("quant", quant_sig),
+                ("sector", sect_sig),
+                ("sentiment", sent_sig),
+            ]
+            if sig is None
         ]
         log.warning("synthesis_missing_signals", ticker=ticker, missing=missing)
 
@@ -156,12 +185,23 @@ async def run_synthesis(state: ResearchState) -> dict:
 
     try:
         report = await synthesis_agent.run(
-            ticker, fund_sig, tech_sig, quant_sig, sect_sig, sent_sig,
+            ticker,
+            fund_sig,
+            tech_sig,
+            quant_sig,
+            sect_sig,
+            sent_sig,
             regime=state.get("regime"),
             trader_profile=state.get("trader_profile"),
             analyst_data=analyst_data,
         )
-        writer({"type": "agent_complete", "agent": "synthesis", "signal": report.model_dump()})
+        writer(
+            {
+                "type": "agent_complete",
+                "agent": "synthesis",
+                "signal": report.model_dump(),
+            }
+        )
         return {"final_report": report.model_dump()}
     except Exception as exc:
         log.error("synthesis_agent_failed", ticker=ticker, error=str(exc))
@@ -214,7 +254,9 @@ def _get_graph() -> Any:
 # ── Public entry points ────────────────────────────────────────────────────────
 
 
-async def run_research(ticker: str, trader_profile: TraderProfile | None = None) -> FinalReport:
+async def run_research(
+    ticker: str, trader_profile: TraderProfile | None = None
+) -> FinalReport:
     """
     Run the full multi-agent research pipeline for a ticker.
 
@@ -225,7 +267,12 @@ async def run_research(ticker: str, trader_profile: TraderProfile | None = None)
     graph = _get_graph()
 
     regime = await get_regime()
-    log.info("graph_regime_fetched", ticker=ticker, regime=regime.regime, confidence=regime.confidence)
+    log.info(
+        "graph_regime_fetched",
+        ticker=ticker,
+        regime=regime.regime,
+        confidence=regime.confidence,
+    )
 
     initial_state: ResearchState = {
         "ticker": ticker,
@@ -267,7 +314,9 @@ async def run_research(ticker: str, trader_profile: TraderProfile | None = None)
     return report
 
 
-async def stream_research(ticker: str, trader_profile: TraderProfile | None = None) -> AsyncIterator[dict]:
+async def stream_research(
+    ticker: str, trader_profile: TraderProfile | None = None
+) -> AsyncIterator[dict]:
     """
     Run the pipeline and yield custom stream events as they are emitted.
 
@@ -279,7 +328,12 @@ async def stream_research(ticker: str, trader_profile: TraderProfile | None = No
     graph = _get_graph()
 
     regime = await get_regime()
-    log.info("graph_regime_fetched", ticker=ticker, regime=regime.regime, confidence=regime.confidence)
+    log.info(
+        "graph_regime_fetched",
+        ticker=ticker,
+        regime=regime.regime,
+        confidence=regime.confidence,
+    )
 
     initial_state: ResearchState = {
         "ticker": ticker,

@@ -96,9 +96,7 @@ async def _call_llm(
     def _fmt_pct(v: float | None) -> str:
         return f"{v * 100:.1f}%" if v is not None else "N/A"
 
-    peer_lines = "\n".join(
-        f"  {t}: {_fmt_pct(r)}" for t, r in peer_comparison.items()
-    )
+    peer_lines = "\n".join(f"  {t}: {_fmt_pct(r)}" for t, r in peer_comparison.items())
 
     prompt = f"""You are a sector equity analyst. Evaluate {ticker}'s performance relative to its sector.
 
@@ -129,7 +127,13 @@ Your task:
     response = await client.messages.create(
         model=model,
         max_tokens=1024,
-        tools=[{"name": "submit", "description": "Submit the sector signal", "input_schema": schema}],
+        tools=[
+            {
+                "name": "submit",
+                "description": "Submit the sector signal",
+                "input_schema": schema,
+            }
+        ],
         tool_choice={"type": "tool", "name": "submit"},
         messages=[{"role": "user", "content": prompt}],
     )
@@ -187,9 +191,7 @@ async def run(ticker: str) -> SectorSignal:
         else None
     )
     etf_return = (
-        compute_12m_return(etf_ohlcv)
-        if not isinstance(etf_ohlcv, Exception)
-        else None
+        compute_12m_return(etf_ohlcv) if not isinstance(etf_ohlcv, Exception) else None
     )
 
     peer_comparison: dict[str, float] = {}
@@ -201,12 +203,18 @@ async def run(ticker: str) -> SectorSignal:
         if ret is not None:
             peer_comparison[sym] = ret
 
-    has_partial = (ticker_return is None or etf_return is None or not peer_comparison)
+    has_partial = ticker_return is None or etf_return is None or not peer_comparison
     data_quality = "partial" if has_partial else "full"
 
     signal = await _call_llm(
-        model, ticker, sector, sector_etf,
-        ticker_return, etf_return, peer_comparison, data_quality,
+        model,
+        ticker,
+        sector,
+        sector_etf,
+        ticker_return,
+        etf_return,
+        peer_comparison,
+        data_quality,
     )
     save_cache(ticker, "signal_sector", signal.model_dump())
     log.info(

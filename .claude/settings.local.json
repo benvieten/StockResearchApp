@@ -15,7 +15,20 @@
       "mcp__claude_ai_Hugging_Face__paper_search",
       "mcp__playwright__browser_navigate",
       "Skill(update-config)",
-      "Skill(update-config:*)"
+      "Skill(update-config:*)",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(python -m ruff check backend/ --output-format=concise)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(python -m ruff check backend/ --fix --unsafe-fixes)",
+      "Bash(python -m ruff check backend/)",
+      "Bash(git push:*)",
+      "Bash(pre-commit install:*)",
+      "Bash(python -m black --target-version py313 backend/)",
+      "Bash(python -m black --check --target-version py313 backend/)"
     ]
   },
   "enableAllProjectMcpServers": true,

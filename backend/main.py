@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from contextlib import asynccontextmanager
 
@@ -68,9 +69,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_cors_origins = [
+    o.strip()
+    for o in os.environ.get(
+        "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -156,12 +165,16 @@ async def research_stream(req: ResearchRequest) -> StreamingResponse:
 
     async def event_generator():
         try:
-            async for event in stream_research(ticker, trader_profile=req.trader_profile):
+            async for event in stream_research(
+                ticker, trader_profile=req.trader_profile
+            ):
                 data = json.dumps(event, default=str)
                 yield f"data: {data}\n\n"
         except Exception as exc:
             log.error("stream_generator_error", ticker=ticker, error=str(exc))
-            error_event = json.dumps({"type": "error", "error": str(exc), "ticker": ticker})
+            error_event = json.dumps(
+                {"type": "error", "error": str(exc), "ticker": ticker}
+            )
             yield f"data: {error_event}\n\n"
 
     return StreamingResponse(
@@ -282,7 +295,13 @@ _EXPLAIN_SCHEMA = {
         "bear_simple": {"type": "string"},
         "bottom_line": {"type": "string"},
     },
-    "required": ["summary", "verdict_explained", "bull_simple", "bear_simple", "bottom_line"],
+    "required": [
+        "summary",
+        "verdict_explained",
+        "bull_simple",
+        "bear_simple",
+        "bottom_line",
+    ],
 }
 
 
@@ -296,7 +315,13 @@ async def _call_explain_llm(model: str, prompt: str) -> dict:
     response = await client.messages.create(
         model=model,
         max_tokens=1024,
-        tools=[{"name": "submit", "description": "Submit the simple explanation", "input_schema": _EXPLAIN_SCHEMA}],
+        tools=[
+            {
+                "name": "submit",
+                "description": "Submit the simple explanation",
+                "input_schema": _EXPLAIN_SCHEMA,
+            }
+        ],
         tool_choice={"type": "tool", "name": "submit"},
         messages=[{"role": "user", "content": prompt}],
     )
@@ -319,7 +344,9 @@ async def explain_simple(req: ExplainSimpleRequest) -> dict:
     )
     bull = "\n".join(f"  - {b}" for b in req.bull_case)
     bear = "\n".join(f"  - {b}" for b in req.bear_case)
-    conflicts = "\n".join(f"  - {c}" for c in req.conflicts) if req.conflicts else "  - None"
+    conflicts = (
+        "\n".join(f"  - {c}" for c in req.conflicts) if req.conflicts else "  - None"
+    )
 
     prompt = f"""You are explaining a stock research report to someone who:
 - Has never invested before
@@ -363,4 +390,7 @@ Do NOT use these words: P/E, MACD, RSI, EMA, quant, composite, conviction, senti
         return result
     except Exception as exc:
         log.error("explain_simple_failed", ticker=req.ticker, error=str(exc))
-        raise HTTPException(status_code=500, detail={"error": str(exc), "ticker": req.ticker, "phase": "explain_simple"})
+        raise HTTPException(
+            status_code=500,
+            detail={"error": str(exc), "ticker": req.ticker, "phase": "explain_simple"},
+        )

@@ -44,42 +44,241 @@ _HEADERS = {
 
 # ── Exclusion list ──────────────────────────────────────────────────────────────
 # All-caps words that look like tickers but aren't stocks we want to analyze.
-_EXCLUDED: frozenset[str] = frozenset({
-    # Common English / grammar
-    "I", "A", "AM", "AN", "AS", "AT", "BE", "BY", "DO", "GO", "IF", "IN",
-    "IS", "IT", "MY", "NO", "OF", "ON", "OR", "SO", "TO", "UP", "US", "WE",
-    "ALL", "AND", "ARE", "BUT", "CAN", "DID", "FOR", "GET", "GOT", "HAD",
-    "HAS", "HIM", "HIS", "HOW", "ITS", "LET", "MAY", "NEW", "NOT", "NOW",
-    "OLD", "OUR", "OUT", "OWN", "PUT", "SAY", "SHE", "THE", "TOO", "TWO",
-    "USE", "WAS", "WAY", "WHO", "WHY", "YET", "YOU", "ALSO", "BACK", "BEEN",
-    "BOTH", "EACH", "EVEN", "FROM", "GOOD", "HAVE", "HIGH", "INTO", "JUST",
-    "LAST", "LIKE", "LONG", "MADE", "MAKE", "MANY", "MORE", "MOST", "MUCH",
-    "NEXT", "ONLY", "OVER", "SAID", "SOME", "SUCH", "TAKE", "THAN", "THAT",
-    "THEM", "THEN", "THEY", "THIS", "TOOK", "VERY", "WELL", "WERE", "WHAT",
-    "WHEN", "WITH", "WILL", "YEAR", "DAYS", "WEEK", "STILL",
-    # Finance jargon
-    "CEO", "CFO", "COO", "CTO", "IPO", "ETF", "USD", "GDP", "EPS", "TTM",
-    "YTD", "QOQ", "YOY", "APR", "APY", "IRA", "ESG", "EV", "PE", "PB",
-    "PS", "ATH", "ATL", "WSB", "DD", "TA", "FA", "DCA", "IMO", "TBH",
-    "FOMO", "FUD", "YOLO", "HODL", "SEC", "FED", "IMF", "ECB", "CPI",
-    "PCE", "FOMC", "BPS", "NAV", "AUM", "ROE", "ROA", "FCF",
-    # Months / days
-    "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT",
-    "NOV", "DEC", "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN",
-    # Major ETFs / indices — we analyze individual equities, not funds
-    "SPY", "QQQ", "VTI", "IWM", "DIA", "GLD", "SLV", "USO", "TLT", "HYG",
-    "LQD", "BND", "AGG", "VEA", "VWO", "EFA", "EEM", "IAU",
-    "XLK", "XLF", "XLV", "XLE", "XLI", "XLB", "XLY", "XLP", "XLRE", "XLU", "XLC",
-    "ARKK", "ARKG", "ARKW", "ARKF", "ARKQ",
-    # Crypto proxies
-    "BTC", "ETH", "DOGE", "SHIB",
-    # Misc
-    "AI", "AR", "VR", "UK", "EU", "NY", "DC", "LA", "SF", "TV",
-})
+_EXCLUDED: frozenset[str] = frozenset(
+    {
+        # Common English / grammar
+        "I",
+        "A",
+        "AM",
+        "AN",
+        "AS",
+        "AT",
+        "BE",
+        "BY",
+        "DO",
+        "GO",
+        "IF",
+        "IN",
+        "IS",
+        "IT",
+        "MY",
+        "NO",
+        "OF",
+        "ON",
+        "OR",
+        "SO",
+        "TO",
+        "UP",
+        "US",
+        "WE",
+        "ALL",
+        "AND",
+        "ARE",
+        "BUT",
+        "CAN",
+        "DID",
+        "FOR",
+        "GET",
+        "GOT",
+        "HAD",
+        "HAS",
+        "HIM",
+        "HIS",
+        "HOW",
+        "ITS",
+        "LET",
+        "MAY",
+        "NEW",
+        "NOT",
+        "NOW",
+        "OLD",
+        "OUR",
+        "OUT",
+        "OWN",
+        "PUT",
+        "SAY",
+        "SHE",
+        "THE",
+        "TOO",
+        "TWO",
+        "USE",
+        "WAS",
+        "WAY",
+        "WHO",
+        "WHY",
+        "YET",
+        "YOU",
+        "ALSO",
+        "BACK",
+        "BEEN",
+        "BOTH",
+        "EACH",
+        "EVEN",
+        "FROM",
+        "GOOD",
+        "HAVE",
+        "HIGH",
+        "INTO",
+        "JUST",
+        "LAST",
+        "LIKE",
+        "LONG",
+        "MADE",
+        "MAKE",
+        "MANY",
+        "MORE",
+        "MOST",
+        "MUCH",
+        "NEXT",
+        "ONLY",
+        "OVER",
+        "SAID",
+        "SOME",
+        "SUCH",
+        "TAKE",
+        "THAN",
+        "THAT",
+        "THEM",
+        "THEN",
+        "THEY",
+        "THIS",
+        "TOOK",
+        "VERY",
+        "WELL",
+        "WERE",
+        "WHAT",
+        "WHEN",
+        "WITH",
+        "WILL",
+        "YEAR",
+        "DAYS",
+        "WEEK",
+        "STILL",
+        # Finance jargon
+        "CEO",
+        "CFO",
+        "COO",
+        "CTO",
+        "IPO",
+        "ETF",
+        "USD",
+        "GDP",
+        "EPS",
+        "TTM",
+        "YTD",
+        "QOQ",
+        "YOY",
+        "APR",
+        "APY",
+        "IRA",
+        "ESG",
+        "EV",
+        "PE",
+        "PB",
+        "PS",
+        "ATH",
+        "ATL",
+        "WSB",
+        "DD",
+        "TA",
+        "FA",
+        "DCA",
+        "IMO",
+        "TBH",
+        "FOMO",
+        "FUD",
+        "YOLO",
+        "HODL",
+        "SEC",
+        "FED",
+        "IMF",
+        "ECB",
+        "CPI",
+        "PCE",
+        "FOMC",
+        "BPS",
+        "NAV",
+        "AUM",
+        "ROE",
+        "ROA",
+        "FCF",
+        # Months / days
+        "JAN",
+        "FEB",
+        "MAR",
+        "APR",
+        "MAY",
+        "JUN",
+        "JUL",
+        "AUG",
+        "SEP",
+        "OCT",
+        "NOV",
+        "DEC",
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN",
+        # Major ETFs / indices — we analyze individual equities, not funds
+        "SPY",
+        "QQQ",
+        "VTI",
+        "IWM",
+        "DIA",
+        "GLD",
+        "SLV",
+        "USO",
+        "TLT",
+        "HYG",
+        "LQD",
+        "BND",
+        "AGG",
+        "VEA",
+        "VWO",
+        "EFA",
+        "EEM",
+        "IAU",
+        "XLK",
+        "XLF",
+        "XLV",
+        "XLE",
+        "XLI",
+        "XLB",
+        "XLY",
+        "XLP",
+        "XLRE",
+        "XLU",
+        "XLC",
+        "ARKK",
+        "ARKG",
+        "ARKW",
+        "ARKF",
+        "ARKQ",
+        # Crypto proxies
+        "BTC",
+        "ETH",
+        "DOGE",
+        "SHIB",
+        # Misc
+        "AI",
+        "AR",
+        "VR",
+        "UK",
+        "EU",
+        "NY",
+        "DC",
+        "LA",
+        "SF",
+        "TV",
+    }
+)
 
 # Regex patterns for ticker extraction from free text
-_DOLLAR_TICKER = re.compile(r"\$([A-Z]{1,5})\b")          # $AAPL — most reliable
-_BARE_TICKER = re.compile(r"(?<![$/])\b([A-Z]{2,5})\b")   # AAPL in text — less reliable
+_DOLLAR_TICKER = re.compile(r"\$([A-Z]{1,5})\b")  # $AAPL — most reliable
+_BARE_TICKER = re.compile(r"(?<![$/])\b([A-Z]{2,5})\b")  # AAPL in text — less reliable
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
@@ -119,9 +318,15 @@ async def get_candidates(top_n: int | None = None) -> list[str]:
         return_exceptions=True,
     )
 
-    yahoo_trending: list[str]    = results[0] if not isinstance(results[0], Exception) else []
-    screener_hits: dict[str, int] = results[1] if not isinstance(results[1], Exception) else {}
-    reddit_mentions: dict[str, int] = results[2] if not isinstance(results[2], Exception) else {}
+    yahoo_trending: list[str] = (
+        results[0] if not isinstance(results[0], Exception) else []
+    )
+    screener_hits: dict[str, int] = (
+        results[1] if not isinstance(results[1], Exception) else {}
+    )
+    reddit_mentions: dict[str, int] = (
+        results[2] if not isinstance(results[2], Exception) else {}
+    )
 
     if isinstance(results[0], Exception):
         log.warning("screener_yahoo_failed", error=str(results[0]))
@@ -137,14 +342,18 @@ async def get_candidates(top_n: int | None = None) -> list[str]:
         scores[ticker] += 2
 
     for ticker, count in screener_hits.items():
-        scores[ticker] += 3 * min(count, 2)   # up to 6 pts for appearing in multiple screeners
+        scores[ticker] += 3 * min(
+            count, 2
+        )  # up to 6 pts for appearing in multiple screeners
 
     for ticker, count in reddit_mentions.items():
         # dollar-sign mentions stored as negative (sentinel) — see _reddit_hot_mentions
         if count < 0:
-            scores[ticker] += 2 * min(abs(count), 3)  # $TICKER callout: 2 pts each, cap 3
+            scores[ticker] += 2 * min(
+                abs(count), 3
+            )  # $TICKER callout: 2 pts each, cap 3
         else:
-            scores[ticker] += min(count, 3)            # bare caps: 1 pt each, cap 3
+            scores[ticker] += min(count, 3)  # bare caps: 1 pt each, cap 3
 
     log.info(
         "screener_raw_scores",
@@ -178,7 +387,8 @@ async def _yahoo_trending() -> list[str]:
 
     quotes = resp.json().get("finance", {}).get("result", [{}])[0].get("quotes", [])
     tickers = [
-        q["symbol"] for q in quotes
+        q["symbol"]
+        for q in quotes
         if re.match(r"^[A-Z]{1,5}$", q.get("symbol", ""))
         and q["symbol"] not in _EXCLUDED
     ]
@@ -200,7 +410,11 @@ async def _yfinance_screeners(queries: list[str]) -> dict[str, int]:
                 sym = quote.get("symbol", "")
                 if re.match(r"^[A-Z]{1,5}$", sym) and sym not in _EXCLUDED:
                     counts[sym] += 1
-            log.info("yfinance_screener_fetched", query=query, count=len(result.get("quotes", [])))
+            log.info(
+                "yfinance_screener_fetched",
+                query=query,
+                count=len(result.get("quotes", [])),
+            )
         except Exception as exc:
             log.warning("yfinance_screener_failed", query=query, error=str(exc))
 
@@ -252,7 +466,7 @@ async def _reddit_hot_mentions(subreddits: list[str]) -> dict[str, int]:
     all_tickers = set(dollar_counts) | set(bare_counts)
     for t in all_tickers:
         if dollar_counts[t] > 0:
-            combined[t] = -dollar_counts[t]   # negative = dollar-sign callout
+            combined[t] = -dollar_counts[t]  # negative = dollar-sign callout
         else:
             combined[t] = bare_counts[t]
     return combined
@@ -285,13 +499,11 @@ async def _validate_tickers(
     async def _check(ticker: str) -> str | None:
         async with sem:
             try:
-                info: dict = await asyncio.to_thread(
-                    lambda: yf.Ticker(ticker).info
-                )
+                info: dict = await asyncio.to_thread(lambda: yf.Ticker(ticker).info)
                 if info.get("quoteType") != "EQUITY":
                     return None
                 mkt_cap = info.get("marketCap") or 0
-                avg_vol  = info.get("averageVolume") or 0
+                avg_vol = info.get("averageVolume") or 0
                 if mkt_cap < min_market_cap or avg_vol < min_avg_volume:
                     return None
                 return ticker
@@ -320,7 +532,10 @@ if __name__ == "__main__":
         # Pass --refresh to bust cache and re-discover
         if "--refresh" in sys.argv:
             from backend.data._cache import save_cache
-            save_cache("MARKET", "screener", None)  # won't match load_cache since None != list
+
+            save_cache(
+                "MARKET", "screener", None
+            )  # won't match load_cache since None != list
 
         candidates = await get_candidates()
         print(json.dumps(candidates, indent=2))

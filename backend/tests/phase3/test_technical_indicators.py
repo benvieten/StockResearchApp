@@ -15,6 +15,7 @@ pytestmark = [pytest.mark.phase3, pytest.mark.unit]
 @pytest.fixture
 def compute():
     from backend.agents.technical import compute_indicators
+
     return compute_indicators
 
 
@@ -25,13 +26,20 @@ def indicators(compute, sample_ohlcv_df):
 
 class TestIndicatorKeys:
     REQUIRED_KEYS = {
-        "ema_20", "ema_50", "ema_200",
+        "ema_20",
+        "ema_50",
+        "ema_200",
         "rsi_14",
-        "macd", "macd_signal", "macd_hist",
-        "bb_upper", "bb_lower", "bb_mid",
+        "macd",
+        "macd_signal",
+        "macd_hist",
+        "bb_upper",
+        "bb_lower",
+        "bb_mid",
         "atr_14",
         "obv",
-        "support", "resistance",
+        "support",
+        "resistance",
     }
 
     def test_all_required_keys_present(self, indicators):
@@ -63,16 +71,16 @@ class TestEmaValues:
         ema_200_dist = abs(indicators["ema_200"] - current_price)
         # EMA 20 should generally be closer to current price than EMA 200
         # (not always true in all market conditions, but true for our synthetic data)
-        assert ema_20_dist <= ema_200_dist * 3, (
-            "EMA 20 is suspiciously far from current price vs EMA 200"
-        )
+        assert (
+            ema_20_dist <= ema_200_dist * 3
+        ), "EMA 20 is suspiciously far from current price vs EMA 200"
 
 
 class TestRsi:
     def test_rsi_in_valid_range(self, indicators):
-        assert 0.0 <= indicators["rsi_14"] <= 100.0, (
-            f"RSI must be 0-100, got {indicators['rsi_14']}"
-        )
+        assert (
+            0.0 <= indicators["rsi_14"] <= 100.0
+        ), f"RSI must be 0-100, got {indicators['rsi_14']}"
 
     def test_rsi_is_float(self, indicators):
         assert isinstance(indicators["rsi_14"], float)
@@ -80,14 +88,14 @@ class TestRsi:
 
 class TestBollingerBands:
     def test_upper_above_lower(self, indicators):
-        assert indicators["bb_upper"] > indicators["bb_lower"], (
-            "Bollinger upper band must be above lower band"
-        )
+        assert (
+            indicators["bb_upper"] > indicators["bb_lower"]
+        ), "Bollinger upper band must be above lower band"
 
     def test_mid_between_bands(self, indicators):
-        assert indicators["bb_lower"] <= indicators["bb_mid"] <= indicators["bb_upper"], (
-            "Bollinger mid band must be between upper and lower"
-        )
+        assert (
+            indicators["bb_lower"] <= indicators["bb_mid"] <= indicators["bb_upper"]
+        ), "Bollinger mid band must be between upper and lower"
 
 
 class TestSupportResistance:
@@ -98,9 +106,9 @@ class TestSupportResistance:
         assert indicators["resistance"] > 0
 
     def test_resistance_above_support(self, indicators):
-        assert indicators["resistance"] >= indicators["support"], (
-            "Resistance must be >= support"
-        )
+        assert (
+            indicators["resistance"] >= indicators["support"]
+        ), "Resistance must be >= support"
 
 
 class TestAtr:
@@ -111,3 +119,70 @@ class TestAtr:
 class TestObv:
     def test_obv_is_numeric(self, indicators):
         assert isinstance(indicators["obv"], (int, float))
+
+
+class TestShortDataFrame:
+    """
+    Covers the bug where a recently-listed ticker has < 200 bars —
+    EMA 200 and other long-window indicators return None.
+    The prompt formatter must not crash on these None values.
+    """
+
+    @pytest.fixture
+    def short_df(self):
+        """120 bars — enough for EMA 20/50, RSI, MACD, BB but NOT EMA 200."""
+        import numpy as np
+        import pandas as pd
+
+        n = 120
+        rng = np.random.default_rng(7)
+        prices = 50 + np.cumsum(rng.normal(0, 0.8, n))
+        dates = pd.bdate_range(end="2026-03-18", periods=n)
+        return pd.DataFrame(
+            {
+                "Open": prices * 0.999,
+                "High": prices * 1.005,
+                "Low": prices * 0.995,
+                "Close": prices,
+                "Volume": rng.integers(1_000_000, 5_000_000, n),
+            },
+            index=dates,
+        )
+
+    def test_compute_indicators_does_not_crash_on_short_df(self, compute, short_df):
+        """Should not raise — all keys present, some may be None."""
+        result = compute(short_df)
+        assert result is not None
+
+    def test_ema_200_is_none_for_short_df(self, compute, short_df):
+        result = compute(short_df)
+        assert (
+            result["ema_200"] is None
+        ), "EMA 200 must be None when DataFrame has < 200 bars"
+
+    def test_ema_20_and_50_still_computed(self, compute, short_df):
+        result = compute(short_df)
+        assert result["ema_20"] is not None, "EMA 20 should be computable with 120 bars"
+        assert result["ema_50"] is not None, "EMA 50 should be computable with 120 bars"
+
+    def test_no_key_missing_with_short_df(self, compute, short_df):
+        """All required keys must be present — values may be None but keys must exist."""
+        required = {
+            "ema_20",
+            "ema_50",
+            "ema_200",
+            "rsi_14",
+            "macd",
+            "macd_signal",
+            "macd_hist",
+            "bb_upper",
+            "bb_lower",
+            "bb_mid",
+            "atr_14",
+            "obv",
+            "support",
+            "resistance",
+        }
+        result = compute(short_df)
+        missing = required - result.keys()
+        assert not missing, f"Keys missing with short DataFrame: {missing}"
