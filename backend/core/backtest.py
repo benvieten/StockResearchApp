@@ -8,15 +8,16 @@ At analysis time, save_prediction() records:
 
 check_outcomes() scans saved predictions and, for those past the target
 horizon (30/60/90 days), fetches the current price and computes actual return.
-Returns a list of outcome dicts — caller decides how to display/export them.
 
-Storage: one JSON-Lines file per day under backtest/predictions_YYYY-MM-DD.jsonl
-All files live in backtest/ (gitignored).
+Storage: SQLite database at backtest/predictions.db (gitignored).
+Existing JSONL files (backtest/predictions_YYYY-MM-DD.jsonl) are migrated
+automatically on first run and left in place as a backup.
 """
 
 from __future__ import annotations
 
 import json
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -25,7 +26,8 @@ import yfinance as yf
 
 log = structlog.get_logger()
 
-_BACKTEST_DIR = Path(__file__).parent.parent.parent / "backtest"
+_BACKTEST_DIR = Path("backtest")
+_DB_PATH = _BACKTEST_DIR / "predictions.db"
 
 # Horizon → days mapping (matches recommended_horizon values)
 _HORIZON_DAYS = {
@@ -34,10 +36,101 @@ _HORIZON_DAYS = {
     "long_term": 90,
 }
 
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS predictions (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticker           TEXT    NOT NULL,
+    verdict          TEXT    NOT NULL,
+    conviction       TEXT    NOT NULL,
+    composite_score  REAL,
+    horizon          TEXT,
+    price_at_prediction REAL,
+    predicted_at     TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ticker       ON predictions(ticker);
+CREATE INDEX IF NOT EXISTS idx_predicted_at ON predictions(predicted_at);
 
-def _ensure_dir() -> Path:
+CREATE TABLE IF NOT EXISTS migrations (
+    name  TEXT PRIMARY KEY,
+    ran_at TEXT NOT NULL
+);
+"""
+
+
+def _connect() -> sqlite3.Connection:
+    """Open a connection to the predictions DB, creating it if needed."""
     _BACKTEST_DIR.mkdir(exist_ok=True)
-    return _BACKTEST_DIR
+    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.executescript(_SCHEMA)
+    conn.commit()
+    return conn
+
+
+def _migrate_jsonl(conn: sqlite3.Connection) -> None:
+    """
+    Import any existing JSONL prediction files into SQLite.
+    Runs at most once (tracked in the migrations table).
+    """
+    migration_name = "import_jsonl_v1"
+    row = conn.execute(
+        "SELECT name FROM migrations WHERE name = ?", (migration_name,)
+    ).fetchone()
+    if row:
+        return  # already done
+
+    jsonl_files = sorted(_BACKTEST_DIR.glob("predictions_*.jsonl"))
+    if not jsonl_files:
+        # Nothing to migrate — mark as done and return
+        conn.execute(
+            "INSERT INTO migrations(name, ran_at) VALUES (?, ?)",
+            (migration_name, datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+        return
+
+    imported = 0
+    for jsonl_path in jsonl_files:
+        for line in jsonl_path.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+                conn.execute(
+                    """
+                    INSERT INTO predictions
+                        (ticker, verdict, conviction, composite_score,
+                         horizon, price_at_prediction, predicted_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        rec["ticker"],
+                        rec["verdict"],
+                        rec["conviction"],
+                        rec.get("composite_score"),
+                        rec.get("horizon"),
+                        rec.get("price_at_prediction"),
+                        rec["predicted_at"],
+                    ),
+                )
+                imported += 1
+            except Exception as exc:
+                log.warning("backtest_migrate_row_failed", error=str(exc))
+
+    conn.execute(
+        "INSERT INTO migrations(name, ran_at) VALUES (?, ?)",
+        (migration_name, datetime.now(timezone.utc).isoformat()),
+    )
+    conn.commit()
+    log.info("backtest_jsonl_migrated", imported=imported, files=len(jsonl_files))
+
+
+def _get_conn() -> sqlite3.Connection:
+    """Return a connection, running one-time JSONL migration if needed."""
+    conn = _connect()
+    _migrate_jsonl(conn)
+    return conn
 
 
 def save_prediction(
@@ -49,25 +142,32 @@ def save_prediction(
     price_at_prediction: float | None,
 ) -> None:
     """
-    Append one prediction record to today's JSONL file.
+    Insert one prediction record into the SQLite database.
 
     Non-blocking: any write error is logged and swallowed so it never
     interrupts the main pipeline.
     """
     try:
-        today = datetime.now(timezone.utc).date().isoformat()
-        path = _ensure_dir() / f"predictions_{today}.jsonl"
-        record = {
-            "ticker": ticker,
-            "verdict": verdict,
-            "conviction": conviction,
-            "composite_score": composite_score,
-            "horizon": horizon,
-            "price_at_prediction": price_at_prediction,
-            "predicted_at": datetime.now(timezone.utc).isoformat(),
-        }
-        with path.open("a") as f:
-            f.write(json.dumps(record) + "\n")
+        conn = _get_conn()
+        conn.execute(
+            """
+            INSERT INTO predictions
+                (ticker, verdict, conviction, composite_score,
+                 horizon, price_at_prediction, predicted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                ticker,
+                verdict,
+                conviction,
+                composite_score,
+                horizon,
+                price_at_prediction,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
         log.info("backtest_prediction_saved", ticker=ticker, verdict=verdict)
     except Exception as exc:
         log.warning("backtest_save_failed", ticker=ticker, error=str(exc))
@@ -75,65 +175,67 @@ def save_prediction(
 
 def check_outcomes(min_days_elapsed: int = 25) -> list[dict]:
     """
-    Scan all prediction files and return outcomes for predictions whose
-    horizon has elapsed (or is within min_days_elapsed of elapsing).
+    Return outcomes for all predictions whose horizon has elapsed
+    (or is within min_days_elapsed of elapsing).
 
     For each mature prediction, fetches the current price from yfinance
     and computes actual_return = (current - entry) / entry.
     """
-    bt_dir = _BACKTEST_DIR
-    if not bt_dir.exists():
+    try:
+        conn = _get_conn()
+        rows = conn.execute(
+            "SELECT * FROM predictions ORDER BY predicted_at"
+        ).fetchall()
+        conn.close()
+    except Exception as exc:
+        log.warning("backtest_check_outcomes_failed", error=str(exc))
         return []
 
     now = datetime.now(timezone.utc)
     outcomes: list[dict] = []
 
-    for jsonl_path in sorted(bt_dir.glob("predictions_*.jsonl")):
-        for line in jsonl_path.read_text().splitlines():
-            if not line.strip():
+    for row in rows:
+        try:
+            rec = dict(row)
+            predicted_at = datetime.fromisoformat(rec["predicted_at"])
+            horizon = rec.get("horizon") or "medium_term"
+            target_days = _HORIZON_DAYS.get(horizon, 60)
+            elapsed = (now - predicted_at).days
+
+            if elapsed < (target_days - min_days_elapsed):
                 continue
+
+            entry_price = rec.get("price_at_prediction")
+            if not entry_price:
+                continue
+
+            ticker = rec["ticker"]
             try:
-                rec = json.loads(line)
-                predicted_at = datetime.fromisoformat(rec["predicted_at"])
-                horizon = rec.get("horizon") or "medium_term"
-                target_days = _HORIZON_DAYS.get(horizon, 60)
-                elapsed = (now - predicted_at).days
-
-                if elapsed < (target_days - min_days_elapsed):
-                    continue  # not mature yet
-
-                entry_price = rec.get("price_at_prediction")
-                if not entry_price:
-                    continue
-
-                ticker = rec["ticker"]
-                try:
-                    t = yf.Ticker(ticker)
-                    info = t.info or {}
-                    current_price = info.get("currentPrice") or info.get(
-                        "regularMarketPrice"
-                    )
-                except Exception:
-                    current_price = None
-
-                actual_return = (
-                    (current_price - entry_price) / entry_price
-                    if current_price and entry_price and entry_price > 0
-                    else None
+                info = yf.Ticker(ticker).info or {}
+                current_price = info.get("currentPrice") or info.get(
+                    "regularMarketPrice"
                 )
+            except Exception:
+                current_price = None
 
-                outcomes.append(
-                    {
-                        **rec,
-                        "elapsed_days": elapsed,
-                        "target_days": target_days,
-                        "current_price": current_price,
-                        "actual_return": actual_return,
-                        "outcome_checked_at": now.isoformat(),
-                    }
-                )
-            except Exception as exc:
-                log.warning("backtest_outcome_parse_failed", error=str(exc))
+            actual_return = (
+                (current_price - entry_price) / entry_price
+                if current_price and entry_price and entry_price > 0
+                else None
+            )
+
+            outcomes.append(
+                {
+                    **rec,
+                    "elapsed_days": elapsed,
+                    "target_days": target_days,
+                    "current_price": current_price,
+                    "actual_return": actual_return,
+                    "outcome_checked_at": now.isoformat(),
+                }
+            )
+        except Exception as exc:
+            log.warning("backtest_outcome_parse_failed", error=str(exc))
 
     return outcomes
 
@@ -148,64 +250,64 @@ def get_ticker_history(ticker: str) -> list[dict]:
       - elapsed_days, target_days
       - current_price, actual_return  (matured only; None if price unavailable)
     """
-    bt_dir = _BACKTEST_DIR
-    if not bt_dir.exists():
+    try:
+        conn = _get_conn()
+        rows = conn.execute(
+            "SELECT * FROM predictions WHERE ticker = ? ORDER BY predicted_at DESC",
+            (ticker,),
+        ).fetchall()
+        conn.close()
+    except Exception as exc:
+        log.warning("backtest_history_failed", ticker=ticker, error=str(exc))
         return []
 
     now = datetime.now(timezone.utc)
     records: list[dict] = []
 
-    for jsonl_path in sorted(bt_dir.glob("predictions_*.jsonl")):
-        for line in jsonl_path.read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                rec = json.loads(line)
-                if rec.get("ticker") != ticker:
-                    continue
-                predicted_at = datetime.fromisoformat(rec["predicted_at"])
-                horizon = rec.get("horizon") or "medium_term"
-                target_days = _HORIZON_DAYS.get(horizon, 60)
-                elapsed = (now - predicted_at).days
-                is_mature = elapsed >= (target_days - 5)
+    for row in rows:
+        try:
+            rec = dict(row)
+            predicted_at = datetime.fromisoformat(rec["predicted_at"])
+            horizon = rec.get("horizon") or "medium_term"
+            target_days = _HORIZON_DAYS.get(horizon, 60)
+            elapsed = (now - predicted_at).days
+            is_mature = elapsed >= (target_days - 5)
 
-                if is_mature and rec.get("price_at_prediction"):
-                    entry_price = rec["price_at_prediction"]
-                    try:
-                        info = yf.Ticker(ticker).info or {}
-                        current_price = info.get("currentPrice") or info.get(
-                            "regularMarketPrice"
-                        )
-                    except Exception:
-                        current_price = None
+            if is_mature and rec.get("price_at_prediction"):
+                entry_price = rec["price_at_prediction"]
+                try:
+                    info = yf.Ticker(ticker).info or {}
+                    current_price = info.get("currentPrice") or info.get(
+                        "regularMarketPrice"
+                    )
+                except Exception:
+                    current_price = None
 
-                    actual_return = (
-                        (current_price - entry_price) / entry_price
-                        if current_price and entry_price and entry_price > 0
-                        else None
-                    )
-                    records.append(
-                        {
-                            **rec,
-                            "status": "matured",
-                            "elapsed_days": elapsed,
-                            "target_days": target_days,
-                            "current_price": current_price,
-                            "actual_return": actual_return,
-                        }
-                    )
-                else:
-                    records.append(
-                        {
-                            **rec,
-                            "status": "pending",
-                            "elapsed_days": elapsed,
-                            "target_days": target_days,
-                        }
-                    )
-            except Exception as exc:
-                log.warning(
-                    "backtest_history_parse_failed", ticker=ticker, error=str(exc)
+                actual_return = (
+                    (current_price - entry_price) / entry_price
+                    if current_price and entry_price and entry_price > 0
+                    else None
                 )
+                records.append(
+                    {
+                        **rec,
+                        "status": "matured",
+                        "elapsed_days": elapsed,
+                        "target_days": target_days,
+                        "current_price": current_price,
+                        "actual_return": actual_return,
+                    }
+                )
+            else:
+                records.append(
+                    {
+                        **rec,
+                        "status": "pending",
+                        "elapsed_days": elapsed,
+                        "target_days": target_days,
+                    }
+                )
+        except Exception as exc:
+            log.warning("backtest_history_parse_failed", ticker=ticker, error=str(exc))
 
-    return sorted(records, key=lambda r: r.get("predicted_at", ""), reverse=True)
+    return records
