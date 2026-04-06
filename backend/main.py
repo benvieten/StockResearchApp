@@ -37,7 +37,7 @@ from backend.core.model_router import get_model_router
 from backend.core.backtest import get_last_prediction, get_ticker_history
 from backend.core.saved_tickers import add_ticker, get_tickers, is_saved, remove_ticker
 from backend.core.usage import get_daily_summary
-from backend.data.price import get_analyst_data
+from backend.data.price import get_analyst_data, get_ohlcv
 from backend.data.screener import get_candidates
 
 load_dotenv()
@@ -504,6 +504,29 @@ async def saved_tickers_details() -> dict:
 
     results = await asyncio.gather(*[_enrich(e) for e in saved])
     return {"tickers": list(results)}
+
+
+@app.get("/price-history/{ticker}")
+async def price_history(ticker: str) -> dict:
+    """
+    Return daily OHLCV for *ticker* (up to 2 years, cached daily).
+
+    Response shape:
+        {
+          "ticker": "AAPL",
+          "dates":  ["2024-01-02", ...],
+          "open":   [185.0, ...],
+          "high":   [186.5, ...],
+          "low":    [183.2, ...],
+          "close":  [185.9, ...],
+          "volume": [55000000, ...]
+        }
+    """
+    ticker = ticker.strip().upper()
+    if not _TICKER_RE.match(ticker):
+        raise HTTPException(status_code=400, detail=f"Invalid ticker: {ticker}")
+    data = await get_ohlcv(ticker)
+    return {"ticker": ticker, **data}
 
 
 @app.post("/saved-tickers/{ticker}")

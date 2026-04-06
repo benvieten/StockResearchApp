@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Bookmark, Trash2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { ArrowLeft, Bookmark, ChevronDown, ChevronUp, Trash2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { StockChart } from '@/components/StockChart'
 
 interface SavedTickerDetail {
   ticker: string
@@ -40,6 +41,7 @@ export function MySavedWatchlist({ onAnalyze, onBack }: Props) {
   const [tickers, setTickers] = useState<SavedTickerDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [removing, setRemoving] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/saved-tickers/details')
@@ -190,7 +192,7 @@ export function MySavedWatchlist({ onAnalyze, onBack }: Props) {
 
                     {/* Last analyzed */}
                     {t.last_analyzed_at && (
-                      <div className="ml-auto">
+                      <div>
                         <p className="text-[11px] text-zinc-600 mb-0.5">Last analyzed</p>
                         <p className="text-xs text-zinc-500">
                           {new Date(t.last_analyzed_at).toLocaleDateString('en-US', {
@@ -199,7 +201,21 @@ export function MySavedWatchlist({ onAnalyze, onBack }: Props) {
                         </p>
                       </div>
                     )}
+
+                    {/* Chart toggle */}
+                    <button
+                      onClick={() => setExpanded(expanded === t.ticker ? null : t.ticker)}
+                      className="ml-auto flex items-center gap-1 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+                    >
+                      {expanded === t.ticker ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      {expanded === t.ticker ? 'Hide chart' : 'Show chart'}
+                    </button>
                   </div>
+
+                  {/* Expandable chart */}
+                  {expanded === t.ticker && (
+                    <StockChart ticker={t.ticker} priceAtAnalysis={t.price_at_analysis} />
+                  )}
                 </div>
               )
             })}
