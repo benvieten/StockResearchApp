@@ -8,6 +8,7 @@ singleton: the file is read exactly once per process.
 
 from __future__ import annotations
 
+import os
 import threading
 from pathlib import Path
 
@@ -99,11 +100,19 @@ _lock = threading.Lock()
 
 
 def get_config() -> AppConfig:
-    """Return the singleton AppConfig, loading config.yaml on first call."""
+    """Return the singleton AppConfig, loading config.yaml on first call.
+
+    OLLAMA_BASE_URL env var overrides ollama.base_url from config.yaml,
+    so Docker deployments can point to host.docker.internal without
+    changing the config file.
+    """
     global _config
     if _config is None:
         with _lock:
             if _config is None:
                 raw = yaml.safe_load(_CONFIG_PATH.read_text(encoding="utf-8"))
                 _config = AppConfig.model_validate(raw)
+                ollama_url = os.environ.get("OLLAMA_BASE_URL")
+                if ollama_url:
+                    _config.ollama.base_url = ollama_url
     return _config

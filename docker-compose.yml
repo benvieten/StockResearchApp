@@ -9,6 +9,8 @@ services:
       # Add your production CORS origins here (comma-separated).
       # Defaults to localhost:5173 (dev) when unset.
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      # Ollama runs on the Mac host — host.docker.internal resolves to it from inside Docker
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
     volumes:
       # Persist cache and backtest data on the host so they survive container restarts.
       - ./cache:/app/cache
