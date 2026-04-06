@@ -1,10 +1,11 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { Search, TrendingUp, Brain, BarChart2, Activity, Globe, MessageSquare } from 'lucide-react'
+import { Bookmark, Search, TrendingUp, Brain, BarChart2, Activity, Globe, MessageSquare } from 'lucide-react'
 
 interface HeroSectionProps {
   onAnalyze: (ticker: string) => void
   onWatchlist?: () => void
+  onSaved?: () => void
 }
 
 const RetroGrid = ({
@@ -50,7 +51,7 @@ const AGENTS = [
   { icon: Brain, label: 'Synthesis' },
 ]
 
-export function HeroSection({ onAnalyze, onWatchlist }: HeroSectionProps) {
+export function HeroSection({ onAnalyze, onWatchlist, onSaved }: HeroSectionProps) {
   const [ticker, setTicker] = React.useState('')
   const [error, setError] = React.useState('')
 
@@ -164,14 +165,26 @@ export function HeroSection({ onAnalyze, onWatchlist }: HeroSectionProps) {
           <p className="text-xs text-zinc-600">
             Try: AAPL · MSFT · NVDA · TSLA · ONDS
           </p>
+          {onSaved && (
+            <>
+              <span className="text-zinc-700">·</span>
+              <button
+                onClick={onSaved}
+                className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors underline underline-offset-2"
+              >
+                <Bookmark className="w-3 h-3" />
+                My Watchlist
+              </button>
+            </>
+          )}
           {onWatchlist && (
             <>
               <span className="text-zinc-700">·</span>
               <button
                 onClick={onWatchlist}
-                className="text-xs text-violet-400 hover:text-violet-300 transition-colors underline underline-offset-2"
+                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors underline underline-offset-2"
               >
-                View Today's Watchlist
+                Today's Screener
               </button>
             </>
           )}

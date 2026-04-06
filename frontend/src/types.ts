@@ -110,6 +110,11 @@ export interface WatchlistResult {
   long_term: FinalReport[]
 }
 
+export interface SavedTicker {
+  ticker: string
+  added_at: string
+}
+
 export interface RegimeInfo {
   regime: 'bull' | 'bear' | 'transitional'
   confidence: number

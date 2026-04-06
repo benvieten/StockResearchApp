@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import type { AgentName, AgentState, FinalReport, RegimeInfo, TraderProfile } from '@/types'
@@ -6,7 +6,7 @@ import { VerdictCard } from '@/components/VerdictCard'
 import { SignalCard } from '@/components/SignalCard'
 import { DummiesMode } from '@/components/DummiesMode'
 import { ExplainTab } from '@/components/ExplainTab'
-import { ArrowLeft, CheckCircle, XCircle, AlertCircle, Brain, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2 } from 'lucide-react'
+import { ArrowLeft, Bookmark, BookmarkCheck, CheckCircle, XCircle, AlertCircle, Brain, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2 } from 'lucide-react'
 import { BacktestWidget } from '@/components/BacktestWidget'
 
 const AGENT_ORDER: AgentName[] = ['fundamental', 'technical', 'quant', 'sector', 'sentiment', 'synthesis']
@@ -24,6 +24,30 @@ type DashTab = 'report' | 'explain'
 
 export function ReportDashboard({ ticker, report, agents, regime, traderProfile, onReset }: ReportDashboardProps) {
   const [activeTab, setActiveTab] = useState<DashTab>('report')
+  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/saved-tickers`)
+      .then(r => r.json())
+      .then(d => setSaved((d.tickers ?? []).some((t: { ticker: string }) => t.ticker === ticker)))
+      .catch(() => {})
+  }, [ticker])
+
+  async function handleToggleSave() {
+    setSaving(true)
+    try {
+      if (saved) {
+        await fetch(`/api/saved-tickers/${ticker}`, { method: 'DELETE' })
+        setSaved(false)
+      } else {
+        await fetch(`/api/saved-tickers/${ticker}`, { method: 'POST' })
+        setSaved(true)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#080808]">
@@ -47,9 +71,24 @@ export function ReportDashboard({ ticker, report, agents, regime, traderProfile,
             </span>
             {regime && <RegimeBadge regime={regime} />}
           </div>
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <Brain className="w-3.5 h-3.5 text-purple-400" />
-            StockResearch AI
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleToggleSave}
+              disabled={saving}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50',
+                saved
+                  ? 'bg-violet-600/20 text-violet-300 border-violet-500/30 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30'
+                  : 'bg-white/5 text-zinc-400 border-white/10 hover:bg-violet-600/20 hover:text-violet-300 hover:border-violet-500/30',
+              )}
+            >
+              {saved ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+              {saved ? 'Saved' : 'Save'}
+            </button>
+            <div className="flex items-center gap-2 text-xs text-zinc-500">
+              <Brain className="w-3.5 h-3.5 text-purple-400" />
+              StockResearch AI
+            </div>
           </div>
         </div>
 

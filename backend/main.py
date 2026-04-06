@@ -35,6 +35,7 @@ from backend.core.data_models import TraderProfile
 from backend.core.graph import run_research, stream_research
 from backend.core.model_router import get_model_router
 from backend.core.backtest import get_ticker_history
+from backend.core.saved_tickers import add_ticker, get_tickers, is_saved, remove_ticker
 from backend.core.usage import get_daily_summary
 from backend.data.screener import get_candidates
 
@@ -422,3 +423,39 @@ async def usage(date: str | None = None) -> dict:
         }
     """
     return await asyncio.to_thread(get_daily_summary, date)
+
+
+# ── Saved tickers (personal watchlist) ────────────────────────────────────────
+#
+# user_id defaults to "default" for the current single-user setup.
+# When auth is added, read user_id from the JWT/session instead.
+
+_DEFAULT_USER = "default"
+
+
+@app.get("/saved-tickers")
+async def saved_tickers_list() -> dict:
+    """Return the current user's saved tickers, most recently added first."""
+    tickers = await asyncio.to_thread(get_tickers, _DEFAULT_USER)
+    return {"tickers": tickers}
+
+
+@app.post("/saved-tickers/{ticker}")
+async def saved_tickers_add(ticker: str) -> dict:
+    """Add a ticker to the current user's watchlist."""
+    ticker = ticker.strip().upper()
+    if not _TICKER_RE.match(ticker):
+        raise HTTPException(status_code=400, detail=f"Invalid ticker: {ticker}")
+    added = await asyncio.to_thread(add_ticker, ticker, _DEFAULT_USER)
+    saved = await asyncio.to_thread(is_saved, ticker, _DEFAULT_USER)
+    return {"ticker": ticker, "added": added, "saved": saved}
+
+
+@app.delete("/saved-tickers/{ticker}")
+async def saved_tickers_remove(ticker: str) -> dict:
+    """Remove a ticker from the current user's watchlist."""
+    ticker = ticker.strip().upper()
+    if not _TICKER_RE.match(ticker):
+        raise HTTPException(status_code=400, detail=f"Invalid ticker: {ticker}")
+    removed = await asyncio.to_thread(remove_ticker, ticker, _DEFAULT_USER)
+    return {"ticker": ticker, "removed": removed}
