@@ -254,6 +254,7 @@ Be precise. Use the numbers given — do not invent ratios."""
         tool_description="Submit the fundamental signal",
         schema=FundamentalSignal.model_json_schema(),
         max_tokens=1024,
+        ticker=ticker,
     )
     data["data_quality"] = data_quality
     data.setdefault("metrics", {k: v for k, v in ratios.items()})

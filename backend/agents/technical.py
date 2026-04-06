@@ -183,6 +183,7 @@ Determine:
         tool_description="Submit the technical signal",
         schema=TechnicalSignal.model_json_schema(),
         max_tokens=1024,
+        ticker=ticker,
     )
     data["raw_indicators"] = {k: v for k, v in indicators.items()}
     data.setdefault("data_quality", "full")

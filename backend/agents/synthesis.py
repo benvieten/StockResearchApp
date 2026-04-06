@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from backend.core.config import SynthesisConfig, get_config
+from backend.core.usage import log_usage
 from backend.data._cache import load_cache, save_cache
 from backend.core.data_models import (
     AnalystData,
@@ -508,6 +509,14 @@ Focus your narrative on the *why*, not just restating the scores."""
         ],
         tool_choice={"type": "tool", "name": "submit"},
         messages=[{"role": "user", "content": prompt}],
+    )
+    log_usage(
+        agent="synthesis",
+        model=model,
+        backend="anthropic",
+        input_tokens=response.usage.input_tokens,
+        output_tokens=response.usage.output_tokens,
+        ticker=ticker,
     )
 
     for block in response.content:

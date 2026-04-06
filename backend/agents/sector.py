@@ -22,6 +22,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 from backend.core.config import get_config
 from backend.core.data_models import SectorSignal
 from backend.core.model_router import get_model_router
+from backend.core.usage import log_usage
 from backend.data._cache import load_cache, save_cache
 from backend.data.price import get_company_info, get_ohlcv
 
@@ -136,6 +137,14 @@ Your task:
         ],
         tool_choice={"type": "tool", "name": "submit"},
         messages=[{"role": "user", "content": prompt}],
+    )
+    log_usage(
+        agent="sector",
+        model=model,
+        backend="anthropic",
+        input_tokens=response.usage.input_tokens,
+        output_tokens=response.usage.output_tokens,
+        ticker=ticker,
     )
 
     for block in response.content:
