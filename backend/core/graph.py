@@ -359,11 +359,33 @@ async def stream_research(
 
         # Emit pipeline_complete with the final report for the frontend
         if final_state and final_state.get("final_report"):
+            report_dict = final_state["final_report"]
             yield {
                 "type": "pipeline_complete",
-                "report": final_state["final_report"],
+                "report": report_dict,
                 "ticker": ticker,
             }
+            # Save prediction for backtesting (mirrors run_research behaviour)
+            signal_scores = report_dict.get("signal_scores") or {}
+            composite = (
+                sum(signal_scores.values()) / len(signal_scores)
+                if signal_scores
+                else None
+            )
+            entry_price: float | None = None
+            try:
+                analyst_raw = await get_analyst_data(ticker)
+                entry_price = analyst_raw.get("current_price")
+            except Exception:
+                pass
+            save_prediction(
+                ticker=ticker,
+                verdict=report_dict["verdict"],
+                conviction=report_dict["conviction"],
+                composite_score=composite,
+                horizon=report_dict.get("recommended_horizon"),
+                price_at_prediction=entry_price,
+            )
         else:
             yield {"type": "done", "ticker": ticker}
     except Exception as exc:
