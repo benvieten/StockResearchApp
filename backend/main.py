@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, field_validator
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
@@ -69,6 +70,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 _cors_origins = [
     o.strip()
