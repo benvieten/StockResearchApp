@@ -34,9 +34,10 @@ from backend.core.config import get_config
 from backend.core.data_models import TraderProfile
 from backend.core.graph import run_research, stream_research
 from backend.core.model_router import get_model_router
-from backend.core.backtest import get_ticker_history
+from backend.core.backtest import get_last_prediction, get_ticker_history
 from backend.core.saved_tickers import add_ticker, get_tickers, is_saved, remove_ticker
 from backend.core.usage import get_daily_summary
+from backend.data.price import get_analyst_data
 from backend.data.screener import get_candidates
 
 load_dotenv()
@@ -438,6 +439,71 @@ async def saved_tickers_list() -> dict:
     """Return the current user's saved tickers, most recently added first."""
     tickers = await asyncio.to_thread(get_tickers, _DEFAULT_USER)
     return {"tickers": tickers}
+
+
+@app.get("/saved-tickers/details")
+async def saved_tickers_details() -> dict:
+    """
+    Return saved tickers enriched with last analysis and current price.
+
+    Response shape:
+        {
+          "tickers": [
+            {
+              "ticker": "AAPL",
+              "added_at": "...",
+              "last_verdict": "hold",
+              "last_conviction": "low",
+              "last_score": 0.50,
+              "last_analyzed_at": "...",
+              "price_at_analysis": 195.50,
+              "current_price": 198.20,
+              "price_change": 2.70,
+              "price_change_pct": 0.0138
+            },
+            ...
+          ]
+        }
+    """
+    saved = await asyncio.to_thread(get_tickers, _DEFAULT_USER)
+
+    async def _enrich(entry: dict) -> dict:
+        ticker = entry["ticker"]
+        last = await asyncio.to_thread(get_last_prediction, ticker)
+        current_price: float | None = None
+        try:
+            analyst = await get_analyst_data(ticker)
+            current_price = analyst.get("current_price")
+        except Exception:
+            pass
+
+        price_at = last.get("price_at_prediction") if last else None
+        price_change = (
+            round(current_price - price_at, 4)
+            if current_price is not None and price_at
+            else None
+        )
+        price_change_pct = (
+            round((current_price - price_at) / price_at, 6)
+            if current_price is not None and price_at and price_at > 0
+            else None
+        )
+
+        return {
+            "ticker": ticker,
+            "added_at": entry["added_at"],
+            "last_verdict": last["verdict"] if last else None,
+            "last_conviction": last["conviction"] if last else None,
+            "last_score": last["composite_score"] if last else None,
+            "last_analyzed_at": last["predicted_at"] if last else None,
+            "price_at_analysis": price_at,
+            "current_price": current_price,
+            "price_change": price_change,
+            "price_change_pct": price_change_pct,
+        }
+
+    results = await asyncio.gather(*[_enrich(e) for e in saved])
+    return {"tickers": list(results)}
 
 
 @app.post("/saved-tickers/{ticker}")

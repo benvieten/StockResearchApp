@@ -133,6 +133,28 @@ def _get_conn() -> sqlite3.Connection:
     return conn
 
 
+def get_last_prediction(ticker: str) -> dict | None:
+    """Return the most recent prediction row for *ticker*, or None."""
+    try:
+        conn = _get_conn()
+        row = conn.execute(
+            """
+            SELECT ticker, verdict, conviction, composite_score,
+                   horizon, price_at_prediction, predicted_at
+            FROM predictions
+            WHERE ticker = ?
+            ORDER BY predicted_at DESC
+            LIMIT 1
+            """,
+            (ticker,),
+        ).fetchone()
+        conn.close()
+        return dict(row) if row else None
+    except Exception as exc:
+        log.warning("backtest_last_prediction_failed", ticker=ticker, error=str(exc))
+        return None
+
+
 def save_prediction(
     ticker: str,
     verdict: str,
